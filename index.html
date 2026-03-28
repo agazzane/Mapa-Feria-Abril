@@ -5,231 +5,600 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>Mapa de Stands – Feria Abril 2026</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --pagado: #22c55e;
-    --senado: #eab308;
-    --disp: #f8fafc;
-    --excedido: #f97316;
-    --primary: #1e293b;
-    --bg: #f1f5f9;
-    --font: 'Inter', system-ui, sans-serif;
+    --pagado:     #22c55e;
+    --pagado-t:   #14532d;
+    --senado:     #facc15;
+    --senado-t:   #713f12;
+    --disp:       #ffffff;
+    --disp-t:     #374151;
+    --excedido:   #f97316;
+    --excedido-t: #7c2d12;
+    --bg:         #f0f4f8;
+    --font:       'DM Sans', system-ui, sans-serif;
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: var(--font); background: var(--bg); color: #334155; padding-bottom: 50px; }
-
-  header { background: white; padding: 20px; text-align: center; border-bottom: 1px solid #e2e8f0; margin-bottom: 20px; }
-  header h1 { font-size: 1.5rem; color: var(--primary); }
-  
-  .controls { max-width: 1200px; margin: 0 auto 20px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
-
-  /* Buscador */
-  .search-container { width: 90%; max-width: 400px; position: relative; }
-  .search-container input { 
-    width: 100%; padding: 10px 15px; border-radius: 25px; border: 1px solid #cbd5e1; 
-    font-size: 0.9rem; outline: none; transition: border 0.2s;
-  }
-  .search-container input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
-
-  /* Tabs - Estilo del ejemplo */
-  .tabs { display: flex; background: #e2e8f0; padding: 5px; border-radius: 12px; gap: 5px; }
-  .tab-btn { 
-    padding: 10px 25px; border: none; border-radius: 8px; cursor: pointer; 
-    font-weight: 600; color: #64748b; background: transparent; transition: 0.2s;
-  }
-  .tab-btn.active { background: white; color: var(--primary); shadow: 0 2px 4px rgba(0,0,0,0.05); }
-
-  /* Stats */
-  .stats { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; font-size: 0.8rem; }
-  .stat-item { display: flex; align-items: center; gap: 6px; background: white; padding: 5px 12px; border-radius: 20px; border: 1px solid #e2e8f0; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; }
-
-  /* Grillas */
-  .floor-container { display: none; max-width: 1400px; margin: 0 auto; overflow: auto; padding: 20px; justify-content: center; }
-  .floor-container.active { display: flex; }
-
-  .grid { 
-    display: grid; 
-    grid-template-columns: repeat(35, 40px); /* Tamaño del stand más grande */
-    grid-auto-rows: 30px; 
-    gap: 3px; 
-    background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;
-    width: fit-content;
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    min-height: 100vh;
+    color: #1e293b;
   }
 
+  /* ── HEADER ── */
+  header {
+    background: #1e293b;
+    color: white;
+    padding: 8px 12px 6px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  }
+  header h1 { font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
+  header p  { font-size: 12px; opacity: .65; margin-top: 1px; }
+
+  /* ── STATS BAR ── */
+  .stats {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #1e293b;
+    border-top: 1px solid rgba(255,255,255,.1);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .stats::-webkit-scrollbar { display: none; }
+  .stat-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,.1);
+    border-radius: 20px;
+    padding: 5px 12px;
+    white-space: nowrap;
+    font-size: 12px;
+    color: white;
+  }
+  .stat-pill .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .stat-pill strong { font-weight: 700; margin-left: 2px; }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    background: white;
+    border-bottom: 2px solid #e2e8f0;
+    position: sticky;
+    top: 70px;
+    z-index: 90;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 12px 8px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: var(--font);
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #64748b;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all .2s;
+  }
+  .tab-btn.active { color: #1e293b; border-bottom-color: #1e293b; }
+
+  /* ── FILTROS ── */
+  .filters {
+    padding: 6px 10px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+  .filter-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 2px solid #e2e8f0;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    white-space: nowrap;
+    background: white;
+    color: #64748b;
+    transition: all .15s;
+  }
+  .filter-btn.active { border-color: #1e293b; color: #1e293b; background: #f8fafc; }
+  .filter-btn[data-f="Pagado"].active    { border-color: var(--pagado); color: var(--pagado-t); background: #f0fdf4; }
+  .filter-btn[data-f="Señado"].active    { border-color: #ca8a04;       color: var(--senado-t); background: #fefce8; }
+  .filter-btn[data-f="Disponible"].active { border-color: #94a3b8;      color: #334155;         background: #f8fafc; }
+
+  /* ── BUSCADOR ── */
+  .search-wrap {
+    padding: 6px 10px;
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .search-wrap input {
+    width: 100%;
+    padding: 9px 14px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: var(--font);
+    outline: none;
+    transition: border-color .2s;
+  }
+  .search-wrap input:focus { border-color: #94a3b8; }
+
+  /* ── FLOOR PANEL ── */
+  .floor { display: none; }
+  .floor.active { display: block; }
+
+  /* ── GRID ── */
+  .map-scroll {
+   overflow-x: auto;
+   padding: 6px;
+   -webkit-overflow-scrolling: touch;
+  }
+  .map-inner {
+    transform: scale(0.6);
+    transform-origin: top left;
+    width: max-content;
+    transition: margin 0.2s ease;
+  }
+  .grid {
+    display: grid;
+    gap: 2px;
+    grid-auto-rows: 30px;
+  }
+
+  /* ── STAND CELL ── */
   .stand {
-    border-radius: 3px; border: 1px solid rgba(0,0,0,0.05);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: 0.1s;
-    text-align: center; color: #1e293b;
+    border-radius: 7px;
+    padding: 3px 3px 2px;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    border: 2px solid transparent;
+    width: 136px;
+    height: 62px;
+    display: flex;
+    flex-direction: column;padding:
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+    user-select: none;
   }
-  .stand:hover { transform: scale(1.2); z-index: 50; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-  
-  .stand[data-e="Pagado"] { background: var(--pagado); color: white; }
-  .stand[data-e="Señado"] { background: var(--senado); color: #854d0e; }
-  .stand[data-e="Disponible"] { background: var(--disp); color: #94a3b8; border: 1px dashed #cbd5e1; }
-  .stand[data-e="Excedido"] { background: var(--excedido); color: white; }
-  .stand.highlight { ring: 3px solid #6366f1; animation: pulse 1s infinite; }
+  .stand:active { transform: scale(.95); }
 
-  @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+  .stand[data-e="Pagado"]     { background: var(--pagado);   color: var(--pagado-t); }
+  .stand[data-e="Señado"]     { background: var(--senado);   color: var(--senado-t); }
+  .stand[data-e="Disponible"] { background: var(--disp);     color: var(--disp-t);   border: 2px solid #9333ea; }
+  .stand[data-e="Excedido"]   { background: var(--excedido); color: var(--excedido-t); }
 
-  /* Modal */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(2px); }
+  .stand.dimmed      { opacity: .18; pointer-events: none; }
+  .stand.highlighted { box-shadow: 0 0 0 3px #1e293b; transform: scale(1.06); z-index: 5; }
+
+  .stand .snum {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -.5px;
+  }
+  .stand .srub {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.2;
+    margin-top: 3px;
+    max-width: 100%;
+    word-break: break-word;
+    hyphens: auto;
+    opacity: .85;
+  }
+
+  .empty { min-width: 136px; min-height: 62px; }
+
+  /* ── LEYENDA ── */
+  .legend {
+    padding: 12px 14px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .leg-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #475569;
+    font-weight: 500;
+  }
+  .leg-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    z-index: 200;
+    align-items: flex-end;
+    justify-content: center;
+  }
   .modal-overlay.open { display: flex; }
-  .modal { background: white; width: 90%; max-width: 380px; border-radius: 15px; padding: 25px; position: relative; }
-  .close-btn { position: absolute; top: 15px; right: 15px; font-size: 20px; cursor: pointer; border: none; background: none; }
-  
-  .modal-h { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
+  .modal {
+    background: white;
+    border-radius: 18px 18px 0 0;
+    padding: 20px 20px 36px;
+    width: 100%;
+    max-width: 480px;
+    animation: slideUp .25s ease;
+    position: relative;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .modal-handle {
+    width: 38px; height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .modal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .modal-badge[data-e="Pagado"]     { background: var(--pagado);   color: var(--pagado-t); }
+  .modal-badge[data-e="Señado"]     { background: var(--senado);   color: var(--senado-t); }
+  .modal-badge[data-e="Disponible"] { background: #f1f5f9;         color: #475569; border: 1.5px solid #9333ea; }
+  .modal-badge[data-e="Excedido"]   { background: var(--excedido); color: var(--excedido-t); }
+
+  .modal h2          { font-size: 28px; font-weight: 700; }
+  .modal-nombre      { font-size: 18px; font-weight: 700; color: #1e293b; margin-top: 8px; }
+  .modal-rubro       { font-size: 15px; color: #475569; margin-top: 4px; font-weight: 500; }
+  .modal-zona        { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+  .modal-money {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .money-box {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #f8fafc;
+  }
+  .money-box .label  { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+  .money-box .amount { font-size: 18px; font-weight: 700; color: #1e293b; margin-top: 2px; }
+  .money-box.debe-ok   { background: #f0fdf4; }
+  .money-box.debe-ok   .amount { color: #15803d; }
+  .money-box.debe-mal  { background: #fee2e2; }
+  .money-box.debe-mal  .amount { color: #b91c1c; }
+
+  .modal-close {
+    position: absolute;
+    top: 18px; right: 18px;
+    background: #f1f5f9;
+    border: none;
+    border-radius: 50%;
+    width: 32px; height: 32px;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: #64748b;
+    font-family: var(--font);
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Feria Abril 2026 - Mapa de Stands</h1>
-  <p id="status" style="font-size: 0.8rem; color: #64748b; margin-top: 5px;">Sincronizando con Excel...</p>
+  <h1>🎪 Mapa de Stands — Feria Abril 2026</h1>
+  <p id="subtitle">Sincronizando datos...</p>
 </header>
 
-<div class="controls">
-  <div class="search-container">
-    <input type="text" id="searchInput" placeholder="Buscar feriante o stand..." oninput="searchStand()">
-  </div>
-
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchFloor('pb')">PLANTA BAJA</button>
-    <button class="tab-btn" onclick="switchFloor('pa')">PLANTA ALTA</button>
-  </div>
-
-  <div class="stats">
-    <div class="stat-item"><div class="dot" style="background:var(--pagado)"></div> Pagados: <span id="c-pag">0</span></div>
-    <div class="stat-item"><div class="dot" style="background:var(--senado)"></div> Señados: <span id="c-sen">0</span></div>
-    <div class="stat-item"><div class="dot" style="background:var(--disp); border: 1px solid #ccc"></div> Libres: <span id="c-lib">0</span></div>
-  </div>
+<div class="stats" id="statsBar">
+  <div class="stat-pill"><div class="dot" style="background:#64748b"></div>Cargando... <strong></strong></div>
 </div>
 
-<div id="pb-container" class="floor-container active">
-  <div id="grid-pb" class="grid"></div>
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchFloor('pb', this)">🏠 Planta Baja</button>
+  <button class="tab-btn"        onclick="switchFloor('pa', this)">🏢 Planta Alta</button>
 </div>
 
-<div id="pa-container" class="floor-container">
-  <div id="grid-pa" class="grid"></div>
+<div class="search-wrap">
+  <input type="search" id="searchInput" placeholder="Buscar por número o feriante..." oninput="applyFilters()">
 </div>
 
-<div id="modalOverlay" class="modal-overlay" onclick="closeModal(event)">
-  <div class="modal" onclick="event.stopPropagation()">
-    <button class="close-btn" onclick="closeModal()">×</button>
-    <div class="modal-h">
-      <div id="m-badge" class="badge"></div>
-      <h2 id="m-num">Stand --</h2>
+<div class="filters" id="filterBar">
+  <button class="filter-btn active" data-f="todos"      onclick="setFilter('todos', this)">Todos</button>
+  <button class="filter-btn"        data-f="Pagado"     onclick="setFilter('Pagado', this)">✅ Pagado</button>
+  <button class="filter-btn"        data-f="Señado"     onclick="setFilter('Señado', this)">⭐ Señado</button>
+  <button class="filter-btn"        data-f="Disponible" onclick="setFilter('Disponible', this)">🔓 Disponible</button>
+</div>
+
+<div class="floor active" id="floor-pb">
+  <div class="map-scroll">
+    <div class="map-inner">
+      <div class="grid" id="grid-pb"></div>
     </div>
-    <p style="font-size: 0.8rem; color: #64748b;">FERIANTE:</p>
-    <p id="m-nombre" style="font-weight: 700; margin-bottom: 10px; font-size: 1.1rem;"></p>
-    <p style="font-size: 0.8rem; color: #64748b;">RUBRO:</p>
-    <p id="m-rubro" style="margin-bottom: 20px; font-style: italic;"></p>
-    <div style="display: flex; gap: 10px;">
-      <div style="flex:1; background: #f8fafc; padding: 10px; border-radius: 8px;">
-        <span style="font-size: 0.7rem; color: #64748b;">TOTAL</span>
-        <p id="m-total" style="font-weight: 700;"></p>
+  </div>
+</div>
+
+<div class="floor" id="floor-pa">
+  <div class="map-scroll">
+    <div class="map-inner">
+      <div class="grid" id="grid-pa"></div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="leg-item"><div class="leg-dot" style="background:var(--pagado)"></div> Pagado</div>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--senado)"></div> Señado</div>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--disp);border:2px solid #9333ea"></div> Disponible</div>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--excedido)"></div> Excedido</div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-badge" id="modalBadge" data-e=""></div>
+    <h2 id="modalNum"></h2>
+    <div class="modal-nombre" id="modalNombre"></div>
+    <div class="modal-rubro"  id="modalRubro"></div>
+    <div class="modal-zona"   id="modalZona"></div>
+    <div class="modal-money" id="modalMoney" style="display:none">
+      <div class="money-box">
+        <div class="label">Total</div>
+        <div class="amount" id="modalTotal"></div>
       </div>
-      <div id="m-debe-box" style="flex:1; padding: 10px; border-radius: 8px;">
-        <span style="font-size: 0.7rem; color: #64748b;">DEBE</span>
-        <p id="m-debe" style="font-weight: 700;"></p>
+      <div class="money-box" id="modalDebeBox">
+        <div class="label">Debe</div>
+        <div class="amount" id="modalDebe"></div>
       </div>
     </div>
   </div>
 </div>
 
 <script>
+// ── CONFIG ──────────────────────────────────────────────────────────────────
 const API_URL = "https://script.google.com/macros/s/AKfycbxxFUbKcfiwDJeMEWT2nQVXi9-_G6NrnculnykK278WzRJ8IQ52grgxzXUBpZcyq5tpbQ/exec";
 
-let FULL_DATA = {};
+// ── STATE ────────────────────────────────────────────────────────────────────
+let FULL_DATA   = {};
+let currentFloor  = 'pb';
+let currentFilter = 'todos';
 
+// ── LOAD FROM API (V3 logic) ─────────────────────────────────────────────────
 async function load() {
   try {
-    const res = await fetch(API_URL);
-    FULL_DATA = await res.json();
-    renderGrid('grid-pb', FULL_DATA.pbData);
-    renderGrid('grid-pa', FULL_DATA.paData);
-    updateStats();
-    document.getElementById('status').textContent = "Datos actualizados";
+    const res  = await fetch(API_URL);
+    FULL_DATA  = await res.json();
+    buildGrid('grid-pb', FULL_DATA.pbData);
+    buildGrid('grid-pa', FULL_DATA.paData);
+    buildStats();
+
+    const total = Object.keys(FULL_DATA.pbData).length + Object.keys(FULL_DATA.paData).length;
+    document.getElementById('subtitle').textContent = `${total} stands · Planta Baja y Planta Alta`;
+
+    // 🔽 AGREGAR ACA
+    fixMapSize();
+    centerMap();
+
   } catch (e) {
-    document.getElementById('status').textContent = "Error al cargar datos";
+    document.getElementById('subtitle').textContent = 'Error al cargar datos';
   }
 }
 
-function renderGrid(containerId, data) {
-  const container = document.getElementById(containerId);
-  container.innerHTML = '';
-  Object.keys(data).forEach(id => {
-    const s = data[id];
-    const div = document.createElement('div');
-    div.className = 'stand';
-    div.textContent = id;
-    div.style.gridRow = s.r + 1;
-    div.style.gridColumn = s.c + 1;
-    div.setAttribute('data-e', s.e);
-    div.setAttribute('data-id', id);
-    div.onclick = () => openModal(id, s);
-    container.appendChild(div);
-  });
+// ── BUILD GRID ───────────────────────────────────────────────────────────────
+function buildGrid(gridId, data) {
+  const el   = document.getElementById(gridId);
+  const rows = Object.values(data).map(s => s.r);
+  const colsArr = Object.values(data).map(s => s.c);
+
+  const minR = Math.min(...rows);
+  const maxR = Math.max(...rows);
+  const minC = Math.min(...colsArr);
+  const maxC = Math.max(...colsArr);
+
+  const cols = maxC - minC + 1;
+
+  el.style.gridTemplateColumns = `repeat(${cols}, 68px)`;
+
+  // Index by position
+  const idx = {};
+  Object.entries(data).forEach(([num, s]) => { idx[`${s.r},${s.c}`] = { num, ...s }; });
+
+  let html = '';
+  for (let r = minR; r <= maxR; r++) {
+    for (let c = minC; c <= maxC; c++) {
+      const s = idx[`${r},${c}`];
+      if (s) {
+        const extra   = (FULL_DATA.extraData || {})[s.num] || {};
+        const nombre  = extra.n || '';
+	const precio  = extra.pr;
+        const rubTrunc = s.rb ? (s.rb.length > 22 ? s.rb.slice(0,20) + '…' : s.rb) : '';
+        // Prefer nombre for search, fallback to rubro
+        const searchLabel = s.e === 'Disponible'
+  	? (nombre || rubTrunc) : rubTrunc;
+        html += `<div class="stand"
+          data-num="${s.num}"
+          data-e="${s.e}"
+          data-rb="${(s.rb||'').replace(/"/g,'&quot;')}"
+          data-n="${nombre.replace(/"/g,'&quot;')}"
+          data-z="${(s.z||'').replace(/"/g,'&quot;')}"
+          onclick="openModal('${s.num}')">
+          <span class="snum">${s.num}</span>
+          ${searchLabel ? `<span class="srub">${searchLabel.length > 22 ? searchLabel.slice(0,20)+'…' : searchLabel}</span>` : ''}
+	${s.e === 'Disponible' && precio
+  	? `<span class="srub" style="font-weight:700">$${Number(precio).toLocaleString('es-AR')}</span>`
+  	: ''
+}
+        </div>`;
+      } else {
+        html += `<div class="empty"></div>`;
+      }
+    }
+  }
+  el.innerHTML = html;
 }
 
-function switchFloor(floor) {
-  document.querySelectorAll('.floor-container, .tab-btn').forEach(el => el.classList.remove('active'));
-  document.getElementById(`${floor}-container`).classList.add('active');
-  event.currentTarget.classList.add('active');
+// ── STATS BAR ────────────────────────────────────────────────────────────────
+function buildStats() {
+  const all = [
+    ...Object.values(FULL_DATA.pbData || {}),
+    ...Object.values(FULL_DATA.paData || {})
+  ];
+  const count = (e) => all.filter(s => s.e === e).length;
+  const total = all.length;
+
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-pill"><div class="dot" style="background:#64748b"></div>Total <strong>${total}</strong></div>
+    <div class="stat-pill"><div class="dot" style="background:var(--pagado)"></div>Pagado <strong>${count('Pagado')}</strong></div>
+    <div class="stat-pill"><div class="dot" style="background:var(--senado)"></div>Señado <strong>${count('Señado')}</strong></div>
+    <div class="stat-pill"><div class="dot" style="background:#e2e8f0;border:1px solid #9333ea"></div>Disponible <strong>${count('Disponible')}</strong></div>
+  `;
 }
 
-function updateStats() {
-  const all = [...Object.values(FULL_DATA.pbData), ...Object.values(FULL_DATA.paData)];
-  document.getElementById('c-pag').textContent = all.filter(s => s.e === 'Pagado').length;
-  document.getElementById('c-sen').textContent = all.filter(s => s.e === 'Señado').length;
-  document.getElementById('c-lib').textContent = all.filter(s => s.e === 'Disponible').length;
+// ── SWITCH FLOOR ─────────────────────────────────────────────────────────────
+function switchFloor(f, btn) {
+  currentFloor = f;
+  document.querySelectorAll('.floor').forEach(el => el.classList.remove('active'));
+  document.getElementById(`floor-${f}`).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+
+  // 🔽 AGREGAR ESTO
+  setTimeout(() => {
+    fixMapSize();
+    centerMap();
+  }, 50);
 }
 
-function openModal(id, s) {
-  const ex = FULL_DATA.extraData[id] || {};
-  document.getElementById('m-num').textContent = `Stand ${id}`;
-  document.getElementById('m-nombre').textContent = ex.n || 'Disponible';
-  document.getElementById('m-rubro').textContent = s.rb || '-';
-  document.getElementById('m-total').textContent = `$${(ex.p || 0).toLocaleString('es-AR')}`;
-  document.getElementById('m-debe').textContent = `$${(ex.d || 0).toLocaleString('es-AR')}`;
-  
-  const badge = document.getElementById('m-badge');
-  badge.textContent = s.e;
-  badge.style.background = s.e === 'Pagado' ? '#dcfce7' : (s.e === 'Señado' ? '#fef9c3' : '#f1f5f9');
-  badge.style.color = s.e === 'Pagado' ? '#166534' : (s.e === 'Señado' ? '#854d0e' : '#64748b');
-  
-  const debeBox = document.getElementById('m-debe-box');
-  debeBox.style.background = ex.d > 0 ? '#fee2e2' : '#f0fdf4';
-  document.getElementById('m-debe').style.color = ex.d > 0 ? '#991b1b' : '#166534';
-
-  document.getElementById('modalOverlay').classList.add('open');
+// ── FILTER ───────────────────────────────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
 }
 
-function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
-
-function searchStand() {
-  const term = document.getElementById('searchInput').value.toLowerCase();
-  document.querySelectorAll('.stand').forEach(el => {
-    const id = el.getAttribute('data-id');
-    const info = FULL_DATA.extraData[id] || {};
-    const name = (info.n || "").toLowerCase();
-    
-    if (term && (id.includes(term) || name.includes(term))) {
-      el.style.opacity = "1";
-      el.style.transform = "scale(1.2)";
-      el.style.boxShadow = "0 0 10px rgba(99, 102, 241, 0.8)";
+function applyFilters() {
+  const q      = document.getElementById('searchInput').value.toLowerCase().trim();
+  const gridId = currentFloor === 'pb' ? 'grid-pb' : 'grid-pa';
+  document.querySelectorAll(`#${gridId} .stand`).forEach(el => {
+    const num     = el.dataset.num;
+    const estado  = el.dataset.e;
+    const rub     = (el.dataset.rb || '').toLowerCase();
+    const nombre  = (el.dataset.n  || '').toLowerCase();
+    const matchF  = currentFilter === 'todos' || estado === currentFilter;
+    const matchS  = !q || num.includes(q) || rub.includes(q) || nombre.includes(q);
+    if (matchF && matchS) {
+      el.classList.remove('dimmed');
+      if (q) el.classList.add('highlighted'); else el.classList.remove('highlighted');
     } else {
-      el.style.opacity = term ? "0.3" : "1";
-      el.style.transform = "scale(1)";
-      el.style.boxShadow = "none";
+      el.classList.add('dimmed');
+      el.classList.remove('highlighted');
     }
   });
 }
 
+// ── MODAL ────────────────────────────────────────────────────────────────────
+function openModal(id) {
+  // Get stand data from current floor + fallback to other floor
+  const data  = (FULL_DATA.pbData || {})[id] || (FULL_DATA.paData || {})[id] || {};
+  const extra = (FULL_DATA.extraData || {})[id] || {};
+
+  const estado = data.e || 'Disponible';
+  const icons  = { Pagado:'✅', Señado:'⭐', Disponible:'🔓', Excedido:'⚠️' };
+
+  // Badge
+  const badge = document.getElementById('modalBadge');
+  badge.setAttribute('data-e', estado);
+  badge.textContent = `${icons[estado] || ''} ${estado}`;
+
+  // Info
+  document.getElementById('modalNum').textContent    = `Stand ${id}`;
+  document.getElementById('modalNombre').textContent = extra.n || '';
+  document.getElementById('modalRubro').textContent  = data.rb || '(sin rubro)';
+  document.getElementById('modalZona').textContent = '';
+
+  // Money (solo si hay datos de extra)
+  const moneyEl = document.getElementById('modalMoney');
+  if (extra.p !== undefined || extra.d !== undefined) {
+    moneyEl.style.display = 'flex';
+    document.getElementById('modalTotal').textContent = `$${(extra.p || 0).toLocaleString('es-AR')}`;
+
+    const debe    = extra.d || 0;
+    const debeBox = document.getElementById('modalDebeBox');
+    document.getElementById('modalDebe').textContent = `$${debe.toLocaleString('es-AR')}`;
+    debeBox.className = 'money-box ' + (debe > 0 ? 'debe-mal' : 'debe-ok');
+  } else {
+    moneyEl.style.display = 'none';
+  }
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modalOverlay') || e.currentTarget.tagName === 'BUTTON') {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+}
+
+function fixMapSize() {
+  const scaleX = 0.6;
+  const scaleY = 0.35;
+
+  document.querySelectorAll('.map-inner').forEach(inner => {
+    const realWidth = inner.scrollWidth;
+    const realHeight = inner.scrollHeight;
+
+    inner.style.width = (realWidth * scaleX) + 'px';
+    inner.style.height = (realHeight * scaleY) + 'px';
+  });
+}
+
+function centerMap() {
+  const scale = 0.6;
+
+  document.querySelectorAll('.map-scroll').forEach(container => {
+    const inner = container.querySelector('.map-inner');
+    if (!inner) return;
+
+    const contentWidth = inner.scrollWidth * scale;
+    const containerWidth = container.clientWidth;
+
+    if (contentWidth < containerWidth) {
+      inner.style.marginLeft = (containerWidth - contentWidth) / 2 + 'px';
+    } else {
+      inner.style.marginLeft = '0px';
+    }
+  });
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
 load();
 </script>
 </body>
