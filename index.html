@@ -154,11 +154,20 @@
     transform-origin: top left;
     width: max-content;
     transition: margin 0.2s ease;
+    position: relative;
+  }
+  .map-bg {
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 0;
   }
   .grid {
     display: grid;
     gap: 2px;
     grid-auto-rows: 30px;
+    position: relative;
+    z-index: 1;
   }
 
   /* ── STAND CELL ── */
@@ -180,10 +189,10 @@
   }
   .stand:active { transform: scale(.95); }
 
-  .stand[data-e="Pagado"]     { background: var(--pagado);   color: var(--pagado-t); }
-  .stand[data-e="Señado"]     { background: var(--senado);   color: var(--senado-t); }
-  .stand[data-e="Disponible"] { background: var(--disp);     color: var(--disp-t);   border: 2px solid #9333ea; }
-  .stand[data-e="Excedido"]   { background: var(--excedido); color: var(--excedido-t); }
+  .stand[data-e="Pagado"]     { background: var(--pagado);   color: var(--pagado-t); box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  .stand[data-e="Señado"]     { background: var(--senado);   color: var(--senado-t); box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  .stand[data-e="Disponible"] { background: var(--disp);     color: var(--disp-t);   border: 2px solid #9333ea; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+  .stand[data-e="Excedido"]   { background: var(--excedido); color: var(--excedido-t); box-shadow: 0 1px 4px rgba(0,0,0,.15); }
 
   .stand.dimmed      { opacity: .18; pointer-events: none; }
   .stand.highlighted { box-shadow: 0 0 0 3px #1e293b; transform: scale(1.06); z-index: 5; }
@@ -205,7 +214,7 @@
     opacity: .85;
   }
 
-  .empty { min-width: 136px; min-height: 62px; }
+  .empty { min-width: 136px; min-height: 62px; background: transparent; }
 
   /* ── LEYENDA ── */
   .legend {
@@ -233,6 +242,8 @@
     z-index: 200;
     align-items: flex-end;
     justify-content: center;
+    /* Neutraliza cualquier zoom visual del navegador */
+    transform-origin: top left;
   }
   .modal-overlay.open { display: flex; }
   .modal {
@@ -337,6 +348,95 @@
 <div class="floor active" id="floor-pb">
   <div class="map-scroll">
     <div class="map-inner">
+      <!-- FONDO PLANTA BAJA -->
+      <svg class="map-bg" width="2050" height="1900" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <style>
+            .bg-label { font-family: 'DM Sans', sans-serif; font-weight: 700; }
+          </style>
+        </defs>
+       
+        <!-- ══ PATIO CUBIERTO (celeste) ══ -->
+        <rect x="140" y="0" width="2050" height="290" fill="#bfdbfe" rx="6"/>
+
+        <!-- ══ ESCENARIO (azul medio) ══ -->
+        <rect x="0" y="70" width="138" height="290" fill="#60a5fa" rx="6"/>
+        <text class="bg-label" x="230" y="270" text-anchor="middle" fill="white" font-size="18" transform="rotate(-90,69,70)">ESCENARIO</text>
+
+        <!-- ══ ACCESO PLANTA ALTA izq (gris claro) — rows 3-5, cols 0-1 ══ -->
+        <rect x="0" y="0" width="138" height="196" fill="#cbd5e1" rx="4"/>
+        <text class="bg-label" x="69" y="100" text-anchor="middle" fill="#475569" font-size="13">ACCESO</text>
+        <text class="bg-label" x="69" y="116" text-anchor="middle" fill="#475569" font-size="13">PLANTA ALTA</text>
+        <text class="bg-label" x="69" y="132" text-anchor="middle" fill="#475569" font-size="11">(escalera)</text>
+
+        <!-- ══ PATIO CUBIERTO label ══ -->
+        <text class="bg-label" x="1000" y="130" text-anchor="middle" fill="#1e3a5f" font-size="28">PATIO CUBIERTO</text>
+
+        <!-- ══ PATIO DESCUBIERTO (rosa más claro) ══ -->
+        <rect x="138" y="290" width="2050" height="1380" fill="#f0c8d8" rx="4"/>
+        <text class="bg-label" x="900" y="930" text-anchor="middle" fill="#9f6b7e" font-size="20">PATIO</text>
+        <text class="bg-label" x="900" y="956" text-anchor="middle" fill="#9f6b7e" font-size="20">DESCUBIERTO</text>
+
+        <!-- ══ GALERIA (rosa oscuro) — rows 4-18, col 0 ══ -->
+        <rect x="0" y="196" width="138" height="1500" fill="#d4a0b5" rx="4"/>
+
+        <!-- ══ ACCESO PLANTA ALTA izq abajo (gris) — rows 18-22 ══ -->
+        <rect x="0" y="596" width="138" height="130" fill="#cbd5e1" rx="4"/>
+        <text class="bg-label" x="69" y="645" text-anchor="middle" fill="#475569" font-size="13">ACCESO</text>
+        <text class="bg-label" x="69" y="661" text-anchor="middle" fill="#475569" font-size="13">PLANTA ALTA</text>
+        <text class="bg-label" x="69" y="677" text-anchor="middle" fill="#475569" font-size="11">(escalera)</text>
+
+        <!-- ══ NARANJA / ENTRADA (gris oscuro) ══ -->
+        <rect x="850" y="1220" width="1200" height="800" fill="#666666" rx="6"/>
+
+        <!-- ══ ZONA NARANJA BANDERA (verde más suave) ══ -->
+        <rect x="0" y="1670" width="620" height="300" fill="#bbf7d0" rx="4"/>
+
+        <!-- ══ MESA labels (gris azulado) ══ -->
+        <rect x="15600" y="390" width="120" height="36" fill="#475569" rx="5"/>
+        <text class="bg-label" x="838" y="213" text-anchor="middle" fill="white" font-size="15">MESA</text>
+
+        <rect x="1600" y="454" width="120" height="36" fill="#475569" rx="5"/>
+        <text class="bg-label" x="838" y="277" text-anchor="middle" fill="white" font-size="15">MESA</text>
+
+        <rect x="1600" y="518" width="120" height="36" fill="#475569" rx="5"/>
+        <text class="bg-label" x="838" y="341" text-anchor="middle" fill="white" font-size="15">MESA</text>
+
+        <rect x="1600" y="582" width="120" height="36" fill="#475569" rx="5"/>
+        <text class="bg-label" x="838" y="405" text-anchor="middle" fill="white" font-size="15">MESA</text>
+
+        <!-- ══ DJ (azul oscuro) ══ -->
+        <rect x="1900" y="320" width="150" height="100" fill="#1e3a5f" rx="5"/>
+        <text class="bg-label" x="1970" y="370" text-anchor="middle" fill="white" font-size="28">DJ</text>
+
+        <!-- ══ CAJAS (gris) ══ -->
+        <rect x="1580" y="1150" width="165" height="64" fill="#64748b" rx="5"/>
+        <text class="bg-label" x="1660" y="1190" text-anchor="middle" fill="white" font-size="24">CAJAS</text>
+
+        <!-- ══ STAND VENTAS (azul oscuro) ══ -->
+        <rect x="1800" y="980" width="300" height="240" fill="#1e3a5f" rx="5"/>
+        <text class="bg-label" x="1920" y="1080" text-anchor="middle" fill="white" font-size="24">STAND</text>
+        <text class="bg-label" x="1920" y="1130" text-anchor="middle" fill="white" font-size="24">VENTAS</text>
+
+        <!-- ══ INGRESO labels ══ -->
+        <!-- INGRESO top-center -->
+        <text class="bg-label" x="630" y="14" text-anchor="middle" fill="#1e3a5f" font-size="13">INGRESO</text>
+        <!-- INGRESO left (row 3 area) -->
+        <text class="bg-label" x="350" y="320" text-anchor="middle" fill="#1e3a5f" font-size="13">INGRESO</text>
+        <!-- INGRESO center-bottom (row 3, center) -->
+        <text class="bg-label" x="490" y="140" text-anchor="middle" fill="#1e3a5f" font-size="13">INGRESO</text>
+        <!-- INGRESO right -->
+        <text class="bg-label" x="870" y="140" text-anchor="middle" fill="#1e3a5f" font-size="13">INGRESO</text>
+        <!-- INGRESO fondo (row 22 area) -->
+        <text class="bg-label" x="350" y="726" text-anchor="middle" fill="#1e3a5f" font-size="13">INGRESO</text>
+
+        <!-- ══ ENTRADA ══ -->
+        <text class="bg-label" x="740" y="1900" text-anchor="middle" fill="#065f46" font-size="24">ENTRADA</text>
+        <!-- Flechas entrada -->
+        <text x="265" y="796" text-anchor="middle" fill="#065f46" font-size="28">↕</text>
+      </svg>
+      <!-- FIN FONDO -->
+
       <div class="grid" id="grid-pb"></div>
     </div>
   </div>
@@ -569,13 +669,16 @@ function closeModal(e) {
 
 function fixMapSize() {
   const scaleX = 0.6;
-  const scaleY = 0.35;
+  const scaleY = 0.6;
 
   document.querySelectorAll('.map-inner').forEach(inner => {
-    const realWidth = inner.scrollWidth;
-    const realHeight = inner.scrollHeight;
+    // Use the larger of the grid or background SVG
+    const bg = inner.querySelector('.map-bg');
+    const grid = inner.querySelector('.grid');
+    const realWidth  = Math.max(inner.scrollWidth,  bg ? parseInt(bg.getAttribute('width'))  : 0);
+    const realHeight = Math.max(inner.scrollHeight, bg ? parseInt(bg.getAttribute('height')) : 0);
 
-    inner.style.width = (realWidth * scaleX) + 'px';
+    inner.style.width  = (realWidth  * scaleX) + 'px';
     inner.style.height = (realHeight * scaleY) + 'px';
   });
 }
@@ -597,6 +700,39 @@ function centerMap() {
     }
   });
 }
+
+// ── COMPENSAR ZOOM VISUAL DEL NAVEGADOR EN MOBILE ────────────────────────────
+// Cuando el usuario hace pinch-zoom, el modal se agranda junto con todo.
+// Esto lo compensa aplicando el inverso del zoom al overlay.
+function compensarZoom() {
+  const overlay = document.getElementById('modalOverlay');
+  // window.visualViewport está disponible en todos los browsers modernos
+  if (!window.visualViewport) return;
+
+  const scale  = window.visualViewport.scale;
+  const vvLeft = window.visualViewport.offsetLeft;
+  const vvTop  = window.visualViewport.offsetTop;
+
+  // Aplicamos la escala inversa y reposicionamos para que cubra exactamente el viewport visible
+  overlay.style.transform       = `scale(${1 / scale})`;
+  overlay.style.transformOrigin = `${vvLeft}px ${vvTop}px`;
+  overlay.style.width           = `${window.visualViewport.width  * scale}px`;
+  overlay.style.height          = `${window.visualViewport.height * scale}px`;
+  overlay.style.top             = `${vvTop}px`;
+  overlay.style.left            = `${vvLeft}px`;
+}
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', compensarZoom);
+  window.visualViewport.addEventListener('scroll', compensarZoom);
+}
+
+// Llamar también al abrir el modal para que esté siempre correcto
+const _openModal = openModal;
+openModal = function(id) {
+  _openModal(id);
+  compensarZoom();
+};
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 load();
