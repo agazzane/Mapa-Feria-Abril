@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Mapa de Stands – Feria Abril 2026</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
@@ -143,17 +143,52 @@
   .floor { display: none; }
   .floor.active { display: block; }
 
+  /* ── BOTONES ZOOM ── */
+  .zoom-controls {
+    position: fixed;
+    bottom: 24px;
+    right: 16px;
+    z-index: 150;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .zoom-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #1e293b;
+    color: white;
+    border: none;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+    font-family: var(--font);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .zoom-btn:active { transform: scale(.92); }
+  .zoom-level {
+    text-align: center;
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 600;
+  }
+
   /* ── GRID ── */
   .map-scroll {
-   overflow-x: auto;
+   overflow: auto;
    padding: 6px;
    -webkit-overflow-scrolling: touch;
   }
   .map-inner {
-    transform: scale(0.6);
     transform-origin: top left;
     width: max-content;
-    transition: margin 0.2s ease;
+    transition: transform 0.15s ease;
     position: relative;
   }
   .map-bg {
@@ -321,7 +356,7 @@
 <body>
 
 <header>
-  <h1>🎪 Mapa de Stands — Feria Abril 2026 V7</h1>
+  <h1>🎪 Mapa de Stands — Feria Abril 2026 V7.1</h1>
   <p id="subtitle">Sincronizando datos...</p>
 </header>
 
@@ -457,6 +492,13 @@
   <div class="leg-item"><div class="leg-dot" style="background:var(--excedido)"></div> Excedido</div>
 </div>
 
+<!-- BOTONES ZOOM -->
+<div class="zoom-controls" id="zoomControls">
+  <button class="zoom-btn" onclick="cambiarZoom(1)" title="Acercar">+</button>
+  <div class="zoom-level" id="zoomLabel">60%</div>
+  <button class="zoom-btn" onclick="cambiarZoom(-1)" title="Alejar">−</button>
+</div>
+
 <!-- MODAL -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal" onclick="event.stopPropagation()">
@@ -481,6 +523,23 @@
 </div>
 
 <script>
+// ── BLOQUEAR PINCH-ZOOM DEL BROWSER (Chrome Android lo ignora en meta viewport) ──
+document.addEventListener('touchstart', function(e) {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('touchmove', function(e) {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
+// Bloquear zoom con doble tap
+let lastTap = 0;
+document.addEventListener('touchend', function(e) {
+  const now = Date.now();
+  if (now - lastTap < 300) e.preventDefault();
+  lastTap = now;
+}, { passive: false });
+
 // ── CONFIG ──────────────────────────────────────────────────────────────────
 const API_URL = "https://script.google.com/macros/s/AKfycbxxFUbKcfiwDJeMEWT2nQVXi9-_G6NrnculnykK278WzRJ8IQ52grgxzXUBpZcyq5tpbQ/exec";
 
@@ -502,8 +561,7 @@ async function load() {
     document.getElementById('subtitle').textContent = `${total} stands · Planta Baja y Planta Alta`;
 
     // 🔽 AGREGAR ACA
-    fixMapSize();
-    centerMap();
+    aplicarZoom();
 
   } catch (e) {
     document.getElementById('subtitle').textContent = 'Error al cargar datos';
@@ -590,10 +648,7 @@ function switchFloor(f, btn) {
   applyFilters();
 
   // 🔽 AGREGAR ESTO
-  setTimeout(() => {
-    fixMapSize();
-    centerMap();
-  }, 50);
+  setTimeout(() => { aplicarZoom(); }, 50);
 }
 
 // ── FILTER ───────────────────────────────────────────────────────────────────
@@ -667,99 +722,48 @@ function closeModal(e) {
   }
 }
 
-function fixMapSize() {
-  const scaleX = 0.6;
-  const scaleY = 0.6;
+// ── ZOOM CON BOTONES ─────────────────────────────────────────────────────────
+const ZOOM_STEPS = [0.4, 0.5, 0.6, 0.75, 0.9, 1.1, 1.3];
+let zoomIdx = 2; // arranca en 0.6
 
+function aplicarZoom() {
+  const scale = ZOOM_STEPS[zoomIdx];
   document.querySelectorAll('.map-inner').forEach(inner => {
-    // Use the larger of the grid or background SVG
+    inner.style.transform = `scale(${scale})`;
+  });
+  document.getElementById('zoomLabel').textContent = Math.round(scale * 100) + '%';
+  fixMapSize();
+  centerMap();
+}
+
+function cambiarZoom(dir) {
+  zoomIdx = Math.max(0, Math.min(ZOOM_STEPS.length - 1, zoomIdx + dir));
+  aplicarZoom();
+}
+
+function fixMapSize() {
+  const scale = ZOOM_STEPS[zoomIdx];
+  document.querySelectorAll('.map-inner').forEach(inner => {
     const bg = inner.querySelector('.map-bg');
-    const grid = inner.querySelector('.grid');
     const realWidth  = Math.max(inner.scrollWidth,  bg ? parseInt(bg.getAttribute('width'))  : 0);
     const realHeight = Math.max(inner.scrollHeight, bg ? parseInt(bg.getAttribute('height')) : 0);
-
-    inner.style.width  = (realWidth  * scaleX) + 'px';
-    inner.style.height = (realHeight * scaleY) + 'px';
+    inner.style.width  = (realWidth  * scale) + 'px';
+    inner.style.height = (realHeight * scale) + 'px';
   });
 }
 
 function centerMap() {
-  const scale = 0.6;
-
+  const scale = ZOOM_STEPS[zoomIdx];
   document.querySelectorAll('.map-scroll').forEach(container => {
     const inner = container.querySelector('.map-inner');
     if (!inner) return;
-
     const contentWidth = inner.scrollWidth * scale;
     const containerWidth = container.clientWidth;
-
-    if (contentWidth < containerWidth) {
-      inner.style.marginLeft = (containerWidth - contentWidth) / 2 + 'px';
-    } else {
-      inner.style.marginLeft = '0px';
-    }
+    inner.style.marginLeft = contentWidth < containerWidth
+      ? (containerWidth - contentWidth) / 2 + 'px'
+      : '0px';
   });
 }
-
-// ── ANCLAR MODAL AL VIEWPORT VISUAL (fix pinch-zoom mobile) ──────────────────
-function posicionarModal() {
-  const overlay = document.getElementById('modalOverlay');
-  const modal   = overlay.querySelector('.modal');
-  if (!window.visualViewport) return;
-
-  const vv = window.visualViewport;
-
-  // Posicionamos el overlay sobre el viewport visible
-  overlay.style.position = 'absolute';
-  overlay.style.top      = vv.pageTop + 'px';
-  overlay.style.left     = vv.pageLeft + 'px';
-  overlay.style.width    = vv.width + 'px';
-  overlay.style.height   = vv.height + 'px';
-  overlay.style.transform = 'none';
-
-  // Escalamos el modal inversamente al zoom para que siempre tenga el mismo tamaño visual
-  const escala = 1 / vv.scale;
-  modal.style.transform       = `scale(${escala})`;
-  modal.style.transformOrigin = 'bottom center';
-  // Compensamos el espacio extra que genera el scale
-  modal.style.marginBottom    = `${-(modal.offsetHeight * (1 - escala))}px`;
-}
-
-function resetModalPos() {
-  const overlay = document.getElementById('modalOverlay');
-  const modal   = overlay.querySelector('.modal');
-  overlay.style.position = '';
-  overlay.style.top = '';
-  overlay.style.left = '';
-  overlay.style.width = '';
-  overlay.style.height = '';
-  overlay.style.transform = '';
-  modal.style.transform = '';
-  modal.style.transformOrigin = '';
-  modal.style.marginBottom = '';
-}
-
-if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', () => {
-    if (document.getElementById('modalOverlay').classList.contains('open')) posicionarModal();
-  });
-  window.visualViewport.addEventListener('scroll', () => {
-    if (document.getElementById('modalOverlay').classList.contains('open')) posicionarModal();
-  });
-}
-
-const _openModal = openModal;
-openModal = function(id) {
-  _openModal(id);
-  // Pequeño delay para que el modal esté en el DOM antes de medir
-  requestAnimationFrame(posicionarModal);
-};
-
-const _closeModal = closeModal;
-closeModal = function(e) {
-  _closeModal(e);
-  resetModalPos();
-};
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 load();
