@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-<title>Mapa de Stands – Feria Abril 2026</title>
+<title>Mapa de Stands – Feria Abril 2026 V7</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
 
@@ -702,39 +702,41 @@ function centerMap() {
 }
 
 // ── ANCLAR MODAL AL VIEWPORT VISUAL (fix pinch-zoom mobile) ──────────────────
-// position:fixed en mobile con pinch-zoom se ancla al layout viewport (el documento
-// completo), no al visual viewport (lo que el usuario ve en pantalla).
-// La solución: posicionamos el overlay usando coordenadas absolutas del documento
-// calculadas a partir del visual viewport.
 function posicionarModal() {
   const overlay = document.getElementById('modalOverlay');
+  const modal   = overlay.querySelector('.modal');
   if (!window.visualViewport) return;
 
   const vv = window.visualViewport;
 
-  // Coordenadas absolutas (en el documento) del viewport visible actual
-  const top    = vv.pageTop;
-  const left   = vv.pageLeft;
-  const width  = vv.width;
-  const height = vv.height;
-
-  // Cambiamos a position:absolute para poder usar coordenadas del documento
+  // Posicionamos el overlay sobre el viewport visible
   overlay.style.position = 'absolute';
-  overlay.style.top      = top + 'px';
-  overlay.style.left     = left + 'px';
-  overlay.style.width    = width + 'px';
-  overlay.style.height   = height + 'px';
+  overlay.style.top      = vv.pageTop + 'px';
+  overlay.style.left     = vv.pageLeft + 'px';
+  overlay.style.width    = vv.width + 'px';
+  overlay.style.height   = vv.height + 'px';
   overlay.style.transform = 'none';
+
+  // Escalamos el modal inversamente al zoom para que siempre tenga el mismo tamaño visual
+  const escala = 1 / vv.scale;
+  modal.style.transform       = `scale(${escala})`;
+  modal.style.transformOrigin = 'bottom center';
+  // Compensamos el espacio extra que genera el scale
+  modal.style.marginBottom    = `${-(modal.offsetHeight * (1 - escala))}px`;
 }
 
 function resetModalPos() {
-  // Cuando se cierra, volvemos a fixed por si acaso
   const overlay = document.getElementById('modalOverlay');
+  const modal   = overlay.querySelector('.modal');
   overlay.style.position = '';
   overlay.style.top = '';
   overlay.style.left = '';
   overlay.style.width = '';
   overlay.style.height = '';
+  overlay.style.transform = '';
+  modal.style.transform = '';
+  modal.style.transformOrigin = '';
+  modal.style.marginBottom = '';
 }
 
 if (window.visualViewport) {
@@ -746,14 +748,13 @@ if (window.visualViewport) {
   });
 }
 
-// Llamar al abrir el modal
 const _openModal = openModal;
 openModal = function(id) {
   _openModal(id);
-  posicionarModal();
+  // Pequeño delay para que el modal esté en el DOM antes de medir
+  requestAnimationFrame(posicionarModal);
 };
 
-// Al cerrar, resetear
 const _closeModal = closeModal;
 closeModal = function(e) {
   _closeModal(e);
