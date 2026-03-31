@@ -701,37 +701,63 @@ function centerMap() {
   });
 }
 
-// ── COMPENSAR ZOOM VISUAL DEL NAVEGADOR EN MOBILE ────────────────────────────
-// Cuando el usuario hace pinch-zoom, el modal se agranda junto con todo.
-// Esto lo compensa aplicando el inverso del zoom al overlay.
-function compensarZoom() {
+// ── ANCLAR MODAL AL VIEWPORT VISUAL (fix pinch-zoom mobile) ──────────────────
+// position:fixed en mobile con pinch-zoom se ancla al layout viewport (el documento
+// completo), no al visual viewport (lo que el usuario ve en pantalla).
+// La solución: posicionamos el overlay usando coordenadas absolutas del documento
+// calculadas a partir del visual viewport.
+function posicionarModal() {
   const overlay = document.getElementById('modalOverlay');
-  // window.visualViewport está disponible en todos los browsers modernos
   if (!window.visualViewport) return;
 
-  const scale  = window.visualViewport.scale;
-  const vvLeft = window.visualViewport.offsetLeft;
-  const vvTop  = window.visualViewport.offsetTop;
+  const vv = window.visualViewport;
 
-  // Aplicamos la escala inversa y reposicionamos para que cubra exactamente el viewport visible
-  overlay.style.transform       = `scale(${1 / scale})`;
-  overlay.style.transformOrigin = `${vvLeft}px ${vvTop}px`;
-  overlay.style.width           = `${window.visualViewport.width  * scale}px`;
-  overlay.style.height          = `${window.visualViewport.height * scale}px`;
-  overlay.style.top             = `${vvTop}px`;
-  overlay.style.left            = `${vvLeft}px`;
+  // Coordenadas absolutas (en el documento) del viewport visible actual
+  const top    = vv.pageTop;
+  const left   = vv.pageLeft;
+  const width  = vv.width;
+  const height = vv.height;
+
+  // Cambiamos a position:absolute para poder usar coordenadas del documento
+  overlay.style.position = 'absolute';
+  overlay.style.top      = top + 'px';
+  overlay.style.left     = left + 'px';
+  overlay.style.width    = width + 'px';
+  overlay.style.height   = height + 'px';
+  overlay.style.transform = 'none';
+}
+
+function resetModalPos() {
+  // Cuando se cierra, volvemos a fixed por si acaso
+  const overlay = document.getElementById('modalOverlay');
+  overlay.style.position = '';
+  overlay.style.top = '';
+  overlay.style.left = '';
+  overlay.style.width = '';
+  overlay.style.height = '';
 }
 
 if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', compensarZoom);
-  window.visualViewport.addEventListener('scroll', compensarZoom);
+  window.visualViewport.addEventListener('resize', () => {
+    if (document.getElementById('modalOverlay').classList.contains('open')) posicionarModal();
+  });
+  window.visualViewport.addEventListener('scroll', () => {
+    if (document.getElementById('modalOverlay').classList.contains('open')) posicionarModal();
+  });
 }
 
-// Llamar también al abrir el modal para que esté siempre correcto
+// Llamar al abrir el modal
 const _openModal = openModal;
 openModal = function(id) {
   _openModal(id);
-  compensarZoom();
+  posicionarModal();
+};
+
+// Al cerrar, resetear
+const _closeModal = closeModal;
+closeModal = function(e) {
+  _closeModal(e);
+  resetModalPos();
 };
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
