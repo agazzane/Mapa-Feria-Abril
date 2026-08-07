@@ -858,13 +858,6 @@
       </div>
     </div>
 
-    <!-- INGRESO (solo Admin, cuando pago 100% + contrato firmado + no ingresó) -->
-    <div class="ingreso-section" id="ingresoSection" style="display:none">
-      <div class="ingreso-info" id="ingresoInfo"></div>
-      <button class="ingreso-btn" id="ingresoBtn" onclick="darIngreso()" style="display:none">🚪 Dar ingreso</button>
-      <div class="ingreso-msg" id="ingresoMsg"></div>
-    </div>
-
     <!-- ASIGNAR FERIANTE (solo cuando el stand está Disponible) -->
     <div class="assign-section" id="assignSection" style="display:none">
       <div class="assign-title">🔓 Asignar Feriante</div>
@@ -1002,6 +995,13 @@
       <button class="mob-adicional-btn" id="mobAdicionalBtn" onclick="venderMobAdicional()" disabled>Registrar venta de mobiliario</button>
       <div class="mob-adicional-msg" id="mobAdicionalMsg"></div>
       </div>
+    </div>
+
+    <!-- INGRESO (solo Admin, cuando pago 100% + contrato firmado + no ingresó) -->
+    <div class="ingreso-section" id="ingresoSection" style="display:none">
+      <div class="ingreso-info" id="ingresoInfo"></div>
+      <button class="ingreso-btn" id="ingresoBtn" onclick="darIngreso()" style="display:none">🚪 Dar ingreso</button>
+      <div class="ingreso-msg" id="ingresoMsg"></div>
     </div>
 
     <!-- COMENTARIOS (texto libre, solo perfil 1 y 3, no en Disponible) -->
@@ -1822,14 +1822,21 @@ async function darIngreso() {
     } else if (data.yaIngreso) {
       // Concurrencia: otro Admin ya le había dado el ingreso a este stand
       // (el backend lo detectó al validar antes de escribir).
+      // OJO: acá NO reabrimos el modal con openModal(), porque esa función
+      // pisaría este aviso con el cartel verde "✅ Ya ingresó" (el mismo que
+      // se usa cuando simplemente estás viendo un stand ya ingresado) y daría
+      // la falsa impresión de que la acción de este Admin fue exitosa.
       msgEl.textContent = `⚠️ Este stand ya había sido ingresado`
         + (data.user  ? ` por ${data.user}`   : '')
         + (data.fecha ? ` (${data.fecha})`    : '')
-        + `. Actualizando...`;
+        + `. No se registró nada nuevo.`;
       msgEl.className = 'ingreso-msg err';
+      btn.style.display = 'none'; // ya no corresponde reintentar
+
+      // Igual refrescamos los datos en memoria (para el mapa y filtros),
+      // pero sin volver a pintar el modal encima del mensaje de error.
       lockModal('Actualizando mapa...');
       await load();
-      openModal(currentStandId);
       unlockModal();
 
     } else {
