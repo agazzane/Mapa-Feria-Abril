@@ -447,6 +447,18 @@
   .comentarios-msg.ok  { color: #1a7f3c; }
   .comentarios-msg.err { color: #b91c1c; }
   .mob-open-btn { width: 100%; margin-top: 10px; padding: 9px; background: var(--bg); color: var(--accent); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; font-family: var(--font); cursor: pointer; transition: background .18s; }
+
+  /* ── INGRESO (solo Admin) ── */
+  .ingreso-section { margin-top: 14px; padding: 12px; background: var(--surface2); border-radius: var(--radius); border: 1px solid var(--border); }
+  .ingreso-btn { width: 100%; padding: 10px; background: #1a7f3c; color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; font-family: var(--font); cursor: pointer; transition: background .18s; }
+  .ingreso-btn:active { background: #146830; }
+  .ingreso-btn:disabled { background: #a7d8b7; color: #0a3d1f; cursor: not-allowed; }
+  .ingreso-info { font-size: 13px; font-weight: 600; text-align: center; }
+  .ingreso-info.ok      { color: #15803d; }
+  .ingreso-info.pending { color: var(--text3); font-weight: 500; }
+  .ingreso-msg { font-size: 12px; font-weight: 600; text-align: center; margin-top: 8px; min-height: 16px; }
+  .ingreso-msg.ok  { color: #15803d; }
+  .ingreso-msg.err { color: #ff3b30; }
   .mob-open-btn:active { background: #e5e5ea; }
 
   /* ── MOB ADICIONAL ── */
@@ -846,6 +858,13 @@
       </div>
     </div>
 
+    <!-- INGRESO (solo Admin, cuando pago 100% + contrato firmado + no ingresó) -->
+    <div class="ingreso-section" id="ingresoSection" style="display:none">
+      <div class="ingreso-info" id="ingresoInfo"></div>
+      <button class="ingreso-btn" id="ingresoBtn" onclick="darIngreso()" style="display:none">🚪 Dar ingreso</button>
+      <div class="ingreso-msg" id="ingresoMsg"></div>
+    </div>
+
     <!-- ASIGNAR FERIANTE (solo cuando el stand está Disponible) -->
     <div class="assign-section" id="assignSection" style="display:none">
       <div class="assign-title">🔓 Asignar Feriante</div>
@@ -1088,7 +1107,7 @@ let lastTap = 0;
 document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTap<300) e.preventDefault(); lastTap=now; }, {passive:false});
 
 // ── VERSIÓN DE LA APP ────────────────────────────────────────────────────────
-const APP_VERSION = 'v4.8';   // ← cambiá solo acá
+const APP_VERSION = 'v4.9';   // ← cambiá solo acá
 document.addEventListener('DOMContentLoaded', () => {
   const lv = document.getElementById('loginVersion');
   const hv = document.getElementById('headerVersion');
@@ -1387,6 +1406,44 @@ function openModal(id) {
     debeBox.className = 'money-box ' + (debe>0 ? 'debe-mal' : 'debe-ok');
   } else {
     moneyEl.style.display = 'none';
+  }
+
+  // ── INGRESO (solo Admin) ──────────────────────────────────────────────
+  const ingresoSection = document.getElementById('ingresoSection');
+  const ingresoBtn     = document.getElementById('ingresoBtn');
+  const ingresoInfo    = document.getElementById('ingresoInfo');
+  const ingresoMsg     = document.getElementById('ingresoMsg');
+  if (ingresoMsg) { ingresoMsg.textContent = ''; ingresoMsg.className = 'ingreso-msg'; }
+
+  if (CURRENT_PERFIL === 3) {
+    const yaIngreso  = extra.ingreso === 'SI';
+    const contratoOk = extra.contrato === 'SI';
+    const pagadoOk   = estado === 'Pagado';
+
+    ingresoSection.style.display = 'block';
+
+    if (yaIngreso) {
+      ingresoBtn.style.display = 'none';
+      ingresoInfo.textContent = '✅ Ya ingresó'
+        + (extra.ingresoUser  ? ` — registrado por ${extra.ingresoUser}` : '')
+        + (extra.ingresoFecha ? ` (${extra.ingresoFecha})` : '');
+      ingresoInfo.className = 'ingreso-info ok';
+    } else if (contratoOk && pagadoOk) {
+      ingresoBtn.style.display = 'block';
+      ingresoBtn.disabled = false;
+      ingresoBtn.textContent = '🚪 Dar ingreso';
+      ingresoInfo.textContent = '';
+      ingresoInfo.className = 'ingreso-info';
+    } else {
+      ingresoBtn.style.display = 'none';
+      const faltantes = [];
+      if (!pagadoOk)   faltantes.push('el pago del 100%');
+      if (!contratoOk) faltantes.push('el contrato firmado');
+      ingresoInfo.textContent = `⏳ Falta ${faltantes.join(' y ')} para poder dar el ingreso.`;
+      ingresoInfo.className = 'ingreso-info pending';
+    }
+  } else {
+    ingresoSection.style.display = 'none';
   }
 
   document.getElementById('modalOverlay').classList.add('open');
@@ -1734,6 +1791,57 @@ function clearBtnBusy(btn, text) {
   if (text !== undefined) btn.textContent = text;
   else if (btn.dataset.origHtml !== undefined) btn.innerHTML = btn.dataset.origHtml;
   delete btn.dataset.origHtml;
+}
+
+// ── DAR INGRESO (solo Admin) ─────────────────────────────────────────────
+// El backend (Apps Script) es quien valida de forma atómica que el stand
+// no haya sido ingresado ya por otro Admin (lee y escribe con LockService),
+// así que acá solo mostramos el resultado que nos devuelva.
+async function darIngreso() {
+  if (!currentStandId) return;
+  const btn   = document.getElementById('ingresoBtn');
+  const msgEl = document.getElementById('ingresoMsg');
+  msgEl.textContent = ''; msgEl.className = 'ingreso-msg';
+
+  setBtnBusy(btn, 'Registrando...');
+  try {
+    const url  = `${API_URL}?tipo=ingreso&stand=${encodeURIComponent(currentStandId)}&user=${encodeURIComponent(CURRENT_USER)}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+
+    if (data.ok) {
+      // Ingreso registrado correctamente: refrescar mapa + reabrir el modal
+      // con los datos frescos (por si algo más cambió mientras tanto).
+      msgEl.textContent = '✅ Ingreso registrado. Actualizando...';
+      msgEl.className   = 'ingreso-msg ok';
+      lockModal('Actualizando mapa...');
+      await load();
+      openModal(currentStandId);
+      unlockModal();
+
+    } else if (data.yaIngreso) {
+      // Concurrencia: otro Admin ya le había dado el ingreso a este stand
+      // (el backend lo detectó al validar antes de escribir).
+      msgEl.textContent = `⚠️ Este stand ya había sido ingresado`
+        + (data.user  ? ` por ${data.user}`   : '')
+        + (data.fecha ? ` (${data.fecha})`    : '')
+        + `. Actualizando...`;
+      msgEl.className = 'ingreso-msg err';
+      lockModal('Actualizando mapa...');
+      await load();
+      openModal(currentStandId);
+      unlockModal();
+
+    } else {
+      msgEl.textContent = data.error || 'No se pudo registrar el ingreso.';
+      msgEl.className   = 'ingreso-msg err';
+      clearBtnBusy(btn, '🚪 Dar ingreso');
+    }
+  } catch (err) {
+    msgEl.textContent = 'Error de conexión.';
+    msgEl.className   = 'ingreso-msg err';
+    clearBtnBusy(btn, '🚪 Dar ingreso');
+  }
 }
 
 function lockModal(text = 'Actualizando mapa...') {
