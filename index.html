@@ -2217,9 +2217,18 @@ function activarSesion(user, perfil) {
   }
   load(); // carga el mapa recién después del login
 
-  // Filtro "No ingresaron": solo visible para Admin (perfil 3)
-  const noIngresadosBtn = document.getElementById('noIngresadosBtn');
-  if (noIngresadosBtn) noIngresadosBtn.style.display = (CURRENT_PERFIL === 3) ? '' : 'none';
+  // Filtros rápidos: el perfil Visualizador (2) solo ve "Con mobiliario".
+  // Para Vendedor (1) y Admin (3) se mantiene el comportamiento normal,
+  // con "No ingresaron" visible únicamente para Admin.
+  document.querySelectorAll('#filterBar .filter-btn').forEach(btn => {
+    if (CURRENT_PERFIL === 2) {
+      btn.style.display = (btn.dataset.f === 'mobiliario') ? '' : 'none';
+    } else if (btn.id === 'noIngresadosBtn') {
+      btn.style.display = (CURRENT_PERFIL === 3) ? '' : 'none';
+    } else {
+      btn.style.display = '';
+    }
+  });
 }
 
 function cerrarSesion() {
