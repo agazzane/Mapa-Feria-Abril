@@ -154,6 +154,7 @@
   .filter-btn[data-f="Señado"].active     { background: #a07800; color: white; border-color: #a07800; }
   .filter-btn[data-f="Disponible"].active { background: #5e5ce6; color: white; border-color: #5e5ce6; }
   .filter-btn[data-f="mobiliario"].active { background: #0d9488; color: white; border-color: #0d9488; }
+  .filter-btn[data-f="noIngresados"].active { background: #d64545; color: white; border-color: #d64545; }
   .filter-btn.mis-ventas-btn.active       { background: var(--accent); color: white; border-color: var(--accent); }
 
   /* ── SEARCH ── */
@@ -687,11 +688,11 @@
 </div>
 
 <div class="filters" id="filterBar">
-  <button class="filter-btn active" data-f="todos"      onclick="setFilter('todos', this)">Todos</button>
   <button class="filter-btn"        data-f="Pagado"     onclick="setFilter('Pagado', this)">✅ Pagado</button>
   <button class="filter-btn"        data-f="Señado"     onclick="setFilter('Señado', this)">⭐ Señado</button>
   <button class="filter-btn"        data-f="Disponible" onclick="setFilter('Disponible', this)">🔓 Disponible</button>
   <button class="filter-btn"        data-f="mobiliario" onclick="setFilter('mobiliario', this)">🪑 Con mobiliario</button>
+  <button class="filter-btn"        data-f="noIngresados" id="noIngresadosBtn" style="display:none" onclick="setFilter('noIngresados', this)">🚪 No ingresaron</button>
   <button class="filter-btn mis-ventas-btn" id="misVentasBtn" onclick="toggleMisVentas(this)">👤 Mis ventas</button>
 </div>
 
@@ -1194,6 +1195,7 @@ function buildGrid(gridId, data) {
           data-resp="${resp.replace(/"/g,'&quot;')}"
           data-contrato="${contrato ? 'SI' : 'NO'}"
           data-mob="${tieneMob ? 'SI' : 'NO'}"
+          data-ingreso="${ingreso ? 'SI' : 'NO'}"
           onclick="openModal('${s.num}')">
           ${contrato ? `<span class="contrato-badge" title="Contrato firmado">✍️</span>` : ''}
           ${tieneMob ? `<span class="mob-badge" title="Tiene mobiliario">🪑</span>` : ''}
@@ -1276,9 +1278,14 @@ function switchFloor(f, btn) {
 }
 
 function setFilter(f, btn) {
-  currentFilter = f;
+  const desactivar = (currentFilter === f);
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  if (desactivar) {
+    currentFilter = 'todos';
+  } else {
+    currentFilter = f;
+    btn.classList.add('active');
+  }
   // Desactivar "Mis ventas" al cambiar filtro de estado
   soloMisVentas = false;
   document.getElementById('misVentasBtn').classList.remove('active');
@@ -1288,11 +1295,10 @@ function setFilter(f, btn) {
 function toggleMisVentas(btn) {
   soloMisVentas = !soloMisVentas;
   btn.classList.toggle('active', soloMisVentas);
-  // Si se activa "Mis ventas", resetear filtro de estado a "todos"
+  // Si se activa "Mis ventas", resetear filtro de estado (sin filtro activo)
   if (soloMisVentas) {
     currentFilter = 'todos';
     document.querySelectorAll('.filter-btn[data-f]').forEach(b=>b.classList.remove('active'));
-    document.querySelector('.filter-btn[data-f="todos"]').classList.add('active');
   }
   applyFilters();
 }
@@ -1301,7 +1307,10 @@ function applyFilters() {
   const q = document.getElementById('searchInput').value.toLowerCase().trim();
   const gridId = currentFloor==='pb' ? 'grid-pb' : 'grid-pa';
   document.querySelectorAll(`#${gridId} .stand`).forEach(el => {
-    const matchF    = currentFilter==='todos' || (currentFilter==='mobiliario' ? el.dataset.mob==='SI' : el.dataset.e===currentFilter);
+    const matchF    = currentFilter==='todos' ? true
+                     : currentFilter==='mobiliario' ? el.dataset.mob==='SI'
+                     : currentFilter==='noIngresados' ? ((el.dataset.e==='Pagado' || el.dataset.e==='Señado') && el.dataset.ingreso!=='SI')
+                     : el.dataset.e===currentFilter;
     const matchS    = !q || el.dataset.num.includes(q) || (el.dataset.rb||'').toLowerCase().includes(q) || (el.dataset.n||'').toLowerCase().includes(q);
     const matchMine = !soloMisVentas || (el.dataset.resp||'').toLowerCase() === (CURRENT_USER||'').toLowerCase();
     if (matchF && matchS && matchMine) {
@@ -2092,6 +2101,10 @@ function activarSesion(user, perfil) {
     }
   }
   load(); // carga el mapa recién después del login
+
+  // Filtro "No ingresaron": solo visible para Admin (perfil 3)
+  const noIngresadosBtn = document.getElementById('noIngresadosBtn');
+  if (noIngresadosBtn) noIngresadosBtn.style.display = (CURRENT_PERFIL === 3) ? '' : 'none';
 }
 
 function cerrarSesion() {
