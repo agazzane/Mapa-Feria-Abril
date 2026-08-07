@@ -190,7 +190,20 @@
   .stand[data-e="Excedido"]   { background: var(--excedido); color: var(--excedido-t); box-shadow: 0 1px 4px rgba(255,107,43,.3); }
   .stand.dimmed     { opacity: .15; pointer-events: none; }
   .stand.highlighted{ box-shadow: 0 0 0 3px var(--accent); transform: scale(1.06); z-index: 5; }
-  .stand.ingresado  { box-shadow: 0 0 0 2.5px #007aff !important; }
+  .stand.ingresado  { height: auto; padding-bottom: 0; }
+  .ingreso-ribbon {
+    margin: 4px -3px -2px -3px;
+    background: #007aff;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+    padding: 4px 6px;
+    border-radius: 0 0 9px 9px;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+  }
+  .ingreso-ribbon svg { width: 12px; height: 12px; flex-shrink: 0; }
 
   /* Pulso al seleccionar un stand */
   .stand-pulse {
@@ -1078,7 +1091,7 @@ let lastTap = 0;
 document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTap<300) e.preventDefault(); lastTap=now; }, {passive:false});
 
 // ── VERSIÓN DE LA APP ────────────────────────────────────────────────────────
-const APP_VERSION = 'v4.7';   // ← cambiá solo acá
+const APP_VERSION = 'v4.8';   // ← cambiá solo acá
 document.addEventListener('DOMContentLoaded', () => {
   const lv = document.getElementById('loginVersion');
   const hv = document.getElementById('headerVersion');
@@ -1192,6 +1205,7 @@ function buildGrid(gridId, data) {
           <span class="snum">${s.num}</span>
           ${searchLabel ? `<span class="srub">${searchLabel.length>22?searchLabel.slice(0,20)+'…':searchLabel}</span>` : ''}
           ${s.e==='Disponible'&&precio ? `<span class="srub" style="font-weight:700">$${Number(precio).toLocaleString('es-AR')}</span>` : ''}
+          ${ingreso ? `<span class="ingreso-ribbon">Ingresó<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg></span>` : ''}
         </div>`;
       } else {
         html += `<div class="empty"></div>`;
