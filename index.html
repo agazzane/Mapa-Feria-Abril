@@ -1345,8 +1345,15 @@ async function load(silencioso = false) {
 const CHEQUEO_MS = 5000;
 let ultimoTimestampConocido = null;
 let pollingTimer = null;
+let pollEnCurso = false; // evita que se apilen chequeos si el anterior (o el load(true) que dispara) todavía no terminó
 
 async function chequearActualizaciones() {
+  // No competir por red/Apps Script con una acción en curso (venta, pago,
+  // mobiliario, contrato, ingreso, etc.): esas ya van a disparar su propio
+  // load() al terminar, así que el polling puede esperar al próximo ciclo.
+  if (modalLocked) return;
+  if (pollEnCurso) return;
+  pollEnCurso = true;
   try {
     const res  = await fetch(`${API_URL}?tipo=timestamp`);
     const data = await res.json();
@@ -1358,11 +1365,17 @@ async function chequearActualizaciones() {
     }
     if (data.ts !== ultimoTimestampConocido) {
       ultimoTimestampConocido = data.ts;
-      await load(true);
+      // modalLocked pudo haberse activado mientras esperábamos el fetch de
+      // arriba (ej. el usuario empezó una venta justo ahora); si es así,
+      // no disparamos el load(true) pesado y dejamos que el próximo ciclo
+      // (ya sin modalLocked) lo retome.
+      if (!modalLocked) await load(true);
     }
   } catch (e) {
     // Falla silenciosa: si hay un corte momentáneo de red, se reintenta
     // solo en el próximo ciclo, sin molestar al usuario.
+  } finally {
+    pollEnCurso = false;
   }
 }
 
