@@ -1249,7 +1249,7 @@ let lastTap = 0;
 document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTap<300) e.preventDefault(); lastTap=now; }, {passive:false});
 
 // ── VERSIÓN DE LA APP ────────────────────────────────────────────────────────
-const APP_VERSION = 'v1.8';   // ← cambiá solo acá
+const APP_VERSION = 'v1.9';   // ← cambiá solo acá
 document.addEventListener('DOMContentLoaded', () => {
   const lv = document.getElementById('loginVersion');
   const hv = document.getElementById('headerVersion');
@@ -1257,7 +1257,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (hv) hv.textContent = APP_VERSION;
 });
 
-const API_URL = "https://script.google.com/macros/s/AKfycbw1KPZO2gNyjKoj8GDdoG6QafGNt4EHbzugcqf66eNAt9hyLmw671EBtLZpRtmVX3VHNw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyr1TeIqghOsVPQPxi6rrNxcEsGIEFbRtpIEtPFhQZuUZBVbKqgCJdw_vCYPxKARSi8hQ/exec";
 
 let FULL_DATA = {}, currentFloor = 'pb';
 let FERIANTES_LIST = [];
@@ -2630,11 +2630,14 @@ async function initLogin() {
     activarSesion(saved, savedPerfil);
     return;
   }
-  // ¿Hay credencial biométrica guardada? → disparar directo, sin pedir contraseña
+  // ¿Hay credencial biométrica guardada? → mostrar el botón y esperar el tap
+  // del usuario. IMPORTANTE: no se dispara loginConBiometrico() automáticamente
+  // acá, porque muchos navegadores (sobre todo Safari/iOS) exigen un gesto
+  // explícito del usuario para navigator.credentials.get(); si se llama sola
+  // al cargar la página, la promesa puede quedar colgada hasta el timeout de
+  // 60s, dejando el botón trabado en "Verificando...".
   if (bioDisponible() && localStorage.getItem(BIO_STORAGE_KEY)) {
     mostrarBtnBio();
-    loginConBiometrico(); // si el usuario cancela, queda el botón + el form abajo
-    return;
   }
   // Cargar lista de usuarios para el combo del login
   try {
