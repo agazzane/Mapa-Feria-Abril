@@ -554,7 +554,7 @@
 
   /* ── LOADING OVERLAY ── */
   #loadingOverlay {
-    display: none; position: fixed; inset: 0; z-index: 500;
+    display: none; position: fixed; inset: 0; z-index: 650;
     background: rgba(0,0,0,.45); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
     align-items: center; justify-content: center; flex-direction: column; gap: 14px;
     opacity: 0; transition: opacity .18s ease;
@@ -1249,7 +1249,7 @@ let lastTap = 0;
 document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTap<300) e.preventDefault(); lastTap=now; }, {passive:false});
 
 // ── VERSIÓN DE LA APP ────────────────────────────────────────────────────────
-const APP_VERSION = 'v1.9';   // ← cambiá solo acá
+const APP_VERSION = 'v1.8';   // ← cambiá solo acá
 document.addEventListener('DOMContentLoaded', () => {
   const lv = document.getElementById('loginVersion');
   const hv = document.getElementById('headerVersion');
@@ -1356,6 +1356,29 @@ async function load() {
     // No hacemos nada más: el mapa ya se ve, y las funciones que usan estas
     // listas (openModal, cargarMediosPago, etc.) ya manejan el caso de
     // lista vacía sin romperse.
+  }
+}
+
+// Refresca SOLO los datos de mapa (FERIA + PLANO PB/PA) contra el servidor
+// y repinta. Se usa después de escribir (asignar, pago) para traer campos
+// calculados por la planilla (como el rubro "rb") que el patch local no
+// puede conocer — a diferencia de load(), NO vuelve a pedir "ventas"
+// (feriantes/lista negra/precios/usuarios/medios), porque esos datos no
+// cambian por asignar un stand o registrar un pago, y pedirlos de nuevo acá
+// solo suma una apertura de planilla de más justo después de escribir.
+async function refreshMapaData() {
+  try {
+    const res  = await fetch(`${API_URL}?tipo=mapa`);
+    const data = await res.json();
+    if (data.ok === false) throw new Error(data.error || 'Error al actualizar el mapa');
+    FULL_DATA.pbData     = data.pbData;
+    FULL_DATA.paData     = data.paData;
+    FULL_DATA.extraData  = data.extraData;
+    renderMapUI();
+  } catch(e) {
+    // Silencioso: el patch local ya está en pantalla, esto es solo para
+    // sincronizar campos calculados; si falla, no vale la pena romper el
+    // flujo de éxito que ya se le mostró al usuario.
   }
 }
 
@@ -1982,11 +2005,12 @@ async function asignarFeriante() {
     // El patch local de arriba no puede conocer campos que el backend/planilla
     // calculan solos (como el rubro "rb", que sale de una fórmula en la hoja
     // FERIA). Por eso, igual que se hace en cargarPago() cuando un pago salda
-    // la deuda, disparamos un load() real en paralelo — como modalLocked ya
-    // está en true, load() no muestra su propio spinner y corre calladito
-    // atrás de la pantalla de éxito. Si el usuario aprieta "Continuar" antes
-    // de que termine, showSuccessOverlay se encarga de esperarlo.
-    const mapLoadPromise = load();
+    // la deuda, disparamos un refresco del mapa en paralelo (no hace falta
+    // volver a pedir "ventas" — no cambia por asignar un stand). Como
+    // modalLocked ya está en true, corre calladito atrás de la pantalla de
+    // éxito. Si el usuario aprieta "Continuar" antes de que termine,
+    // showSuccessOverlay se encarga de esperarlo.
+    const mapLoadPromise = refreshMapaData();
     await showSuccessOverlay('Stand cargado', `${feriante} · Puesto ${currentStandId}`, mapLoadPromise);
     document.getElementById('modalOverlay').classList.remove('open');
     modalLocked = false;
@@ -2843,7 +2867,7 @@ async function cargarPago() {
         setBtnBusy(btn, 'Actualizando mapa...');
         await new Promise(r => setTimeout(r, 900));
         lockModal('Actualizando mapa...');
-        await load();
+        await refreshMapaData();
         document.getElementById('modalOverlay').classList.remove('open');
         unlockModal();
       } else {
