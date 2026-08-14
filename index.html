@@ -72,6 +72,15 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   header p { font-size: 11px; color: rgba(255,255,255,.5); margin: 0; line-height: 1.3; }
+  .header-mes-badge {
+    align-self: flex-start;
+    display: inline-block;
+    font-size: 11px; font-weight: 700;
+    color: #ffffff; background: var(--accent);
+    padding: 2px 9px; border-radius: 100px;
+    letter-spacing: .1px; line-height: 1.5;
+    margin: 2px 0 1px;
+  }
   .last-updated { display: none; }
   .login-user-pill {
     flex-shrink: 0;
@@ -794,6 +803,7 @@
     <img src="https://raw.githubusercontent.com/agazzane/Mapa-Feria-SUCOVI/main/SUCOVI.jpg" class="header-logo-sq" style="object-fit:cover;">
     <div class="header-title-block">
       <h1>Feria SUCOVI 2026 <span id="headerVersion"></span></h1>
+      <span class="header-mes-badge" id="headerMesBadge" style="display:none"></span>
       <p id="subtitle">Sincronizando datos...</p>
     </div>
     <button class="login-user-pill" id="userPill" onclick="cerrarSesion()" style="display:none">
@@ -1269,7 +1279,7 @@ let lastTap = 0;
 document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTap<300) e.preventDefault(); lastTap=now; }, {passive:false});
 
 // ── VERSIÓN DE LA APP ────────────────────────────────────────────────────────
-const APP_VERSION = 'v1.0';   // ← cambiá solo acá
+const APP_VERSION = 'v2.0';   // ← cambiá solo acá
 document.addEventListener('DOMContentLoaded', () => {
   const lv = document.getElementById('loginVersion');
   const hv = document.getElementById('headerVersion');
@@ -2159,29 +2169,35 @@ function showSuccessOverlay(title, subtitle, mapLoadPromise = Promise.resolve())
     let mapReady = false;
     mapLoadPromise.then(() => { mapReady = true; }).catch(() => { mapReady = true; });
 
-    const finish = () => {
+    // Cierra el cartel de éxito (animación + remover del DOM visual).
+    // Importante: esto pasa SIEMPRE apenas se aprieta "Continuar", sin
+    // esperar a que el mapa termine de actualizarse.
+    const closeOverlay = () => {
       overlay.classList.remove('shown');
-      setTimeout(() => {
-        overlay.classList.remove('visible');
-        resolve();
-      }, 200);
+      setTimeout(() => overlay.classList.remove('visible'), 200);
     };
 
     const onContinue = () => {
       btn.removeEventListener('click', onContinue);
+
+      // Antes, si el mapa todavía se estaba actualizando, se llamaba a
+      // showLoading() mientras el cartel de éxito seguía visible y tapando
+      // todo (mismo z-index más alto que el de la ruedita) — entonces
+      // parecía que el botón no hacía nada. Ahora el cartel se cierra de
+      // una, y la ruedita (si hace falta) aparece después, ya visible.
+      closeOverlay();
+
       if (mapReady) {
-        finish();
+        resolve();
         return;
       }
-      // El mapa todavía se está actualizando: recién acá mostramos la
-      // ruedita de carga, y cerramos todo cuando termine.
       showLoading('Actualizando mapa...');
       mapLoadPromise.then(() => {
         hideLoading();
-        finish();
+        resolve();
       }).catch(() => {
         hideLoading();
-        finish();
+        resolve();
       });
     };
 
@@ -2811,6 +2827,17 @@ function activarSesion(user, perfil) {
   if (avatarEl) avatarEl.textContent = (user || '?').charAt(0).toUpperCase();
   const mesEl = document.getElementById('userPillMes');
   if (mesEl) mesEl.textContent = CURRENT_MES_LABEL ? ` · ${CURRENT_MES_LABEL}` : '';
+  // El mes es un dato clave: además de la píldora de usuario, lo mostramos
+  // bien a la vista como badge debajo del título del header.
+  const mesBadgeEl = document.getElementById('headerMesBadge');
+  if (mesBadgeEl) {
+    if (CURRENT_MES_LABEL) {
+      mesBadgeEl.textContent = CURRENT_MES_LABEL;
+      mesBadgeEl.style.display = 'inline-block';
+    } else {
+      mesBadgeEl.style.display = 'none';
+    }
+  }
   // Mostrar badge de perfil en la píldora de usuario
   const pillEl = document.getElementById('userPill');
   pillEl.style.display = 'inline-flex';
