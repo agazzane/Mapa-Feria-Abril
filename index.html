@@ -1279,7 +1279,7 @@ let lastTap = 0;
 document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTap<300) e.preventDefault(); lastTap=now; }, {passive:false});
 
 // ── VERSIÓN DE LA APP ────────────────────────────────────────────────────────
-const APP_VERSION = 'v2.0';   // ← cambiá solo acá
+const APP_VERSION = 'v3.0';   // ← cambiá solo acá
 document.addEventListener('DOMContentLoaded', () => {
   const lv = document.getElementById('loginVersion');
   const hv = document.getElementById('headerVersion');
@@ -1336,6 +1336,8 @@ function renderMapUI() {
 
 async function load(silencioso = false) {
   if (!modalLocked && !silencioso) showLoading('Cargando mapa...');
+  const _t0 = performance.now();
+  let _tFetch = 0, _tParse = 0;
   try {
     // El endpoint principal ahora devuelve todo en una sola respuesta
     // (mapa + feriantes + lista negra + precios + usuarios + medios), en vez
@@ -1343,7 +1345,11 @@ async function load(silencioso = false) {
     // planilla por su cuenta y competía por los mismos recursos, así que
     // esto reduce bastante el tiempo de carga.
     const resMap = await fetch(`${API_URL}?mes=${encodeURIComponent(CURRENT_MES)}`);
+    _tFetch = performance.now() - _t0;
+
+    const _tParseStart = performance.now();
     FULL_DATA = await resMap.json();
+    _tParse = performance.now() - _tParseStart;
 
     if (FULL_DATA.feriantes)  FERIANTES_LIST = FULL_DATA.feriantes;
     if (FULL_DATA.listaNegra) LISTA_NEGRA    = FULL_DATA.listaNegra.map(normalizarNombre);
@@ -1357,11 +1363,45 @@ async function load(silencioso = false) {
     }
     if (FULL_DATA.medios) MEDIOS_PAGO = FULL_DATA.medios;
 
+    const _tRenderStart = performance.now();
     renderMapUI();
+    const _tRender = performance.now() - _tRenderStart;
+
     if (!modalLocked && !silencioso) hideLoading();
+
+    // Solo mandamos los tiempos si el backend nos avisó que el perf log
+    // está prendido — así, apagado, esto no hace ni un fetch de más.
+    if (FULL_DATA.perfOn) {
+      const _tTotal = performance.now() - _t0;
+      enviarPerfFrontend('load', {
+        fetch: Math.round(_tFetch),
+        parseo: Math.round(_tParse),
+        render: Math.round(_tRender),
+        total: Math.round(_tTotal)
+      });
+    }
   } catch(e) {
     if (!modalLocked && !silencioso) hideLoading();
     if (!silencioso) document.getElementById('subtitle').textContent = 'Error al cargar datos';
+  }
+}
+
+// Manda al backend un tiempo medido en el front (fetch/parseo/render de
+// load(), por ahora) para que quede junto con los tiempos del backend en la
+// misma hoja PERF_LOG. Fire-and-forget: no se espera la respuesta ni se
+// muestra nada si falla, para no afectar en nada la experiencia del usuario.
+function enviarPerfFrontend(tipo, tiempos) {
+  try {
+    const detalle = Object.entries(tiempos)
+      .map(([k, v]) => `${k}:${v}ms`)
+      .join(' | ');
+    const url = `${API_URL}?tipo=perflog&evento=${encodeURIComponent(tipo)}`
+      + `&mes=${encodeURIComponent(CURRENT_MES || '')}`
+      + `&ms=${encodeURIComponent(tiempos.total || 0)}`
+      + `&detalle=${encodeURIComponent(detalle)}`;
+    fetch(url).catch(() => {});
+  } catch(e) {
+    // no debe afectar nada del flujo normal
   }
 }
 
