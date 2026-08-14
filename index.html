@@ -107,7 +107,7 @@
     padding: 10px 16px;
     flex-shrink: 0;
   }
-  .occ-bar-row { display: flex; align-items: center; gap: 10px; }
+  .occ-bar-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
   .occ-bar-pct {
     font-size: 20px; font-weight: 700; color: #ffffff;
     line-height: 1; letter-spacing: -.3px; flex-shrink: 0;
@@ -120,7 +120,7 @@
   .occ-bar-seg#occSegPagado { background: #30d158; }
   .occ-bar-seg#occSegSenado { background: #ffd60a; }
   .occ-bar-seg#occSegDisp   { background: #e5e5ea; }
-  .occ-chips { display: flex; gap: 8px; margin-top: 10px; }
+  .occ-chips { display: flex; gap: 8px; }
   .occ-chip {
     flex: 1; border-radius: 8px; padding: 6px 8px; text-align: center;
   }
@@ -816,21 +816,12 @@
     <button class="login-user-pill" id="userPill" onclick="cerrarSesion()" style="display:none">
       <span class="user-pill-avatar" id="userPillAvatar">?</span>
       <span id="userPillName"></span>
-      <span id="userPillMes" style="opacity:.65;font-weight:400;"></span>
     </button>
   </div>
 </header>
 
-<!-- ── BARRA DE OCUPACIÓN (una sola línea) ── -->
+<!-- ── BARRA DE OCUPACIÓN (cuadrados con cantidades arriba, barra abajo) ── -->
 <div class="occ-bar-wrap" id="occBarWrap">
-  <div class="occ-bar-row">
-    <span class="occ-bar-pct" id="occPct">—</span>
-    <div class="occ-bar-track" id="occTrack">
-      <div class="occ-bar-seg" id="occSegPagado" style="width:0%"></div>
-      <div class="occ-bar-seg" id="occSegSenado" style="width:0%"></div>
-      <div class="occ-bar-seg" id="occSegDisp"   style="width:0%"></div>
-    </div>
-  </div>
   <div class="occ-chips" id="occDetail">
     <div class="occ-chip occ-chip-pagado">
       <div class="occ-chip-num" id="occValPagado">—</div>
@@ -843,6 +834,14 @@
     <div class="occ-chip occ-chip-libre">
       <div class="occ-chip-num" id="occValDisp">—</div>
       <div class="occ-chip-lbl">Libre</div>
+    </div>
+  </div>
+  <div class="occ-bar-row">
+    <span class="occ-bar-pct" id="occPct">—</span>
+    <div class="occ-bar-track" id="occTrack">
+      <div class="occ-bar-seg" id="occSegPagado" style="width:0%"></div>
+      <div class="occ-bar-seg" id="occSegSenado" style="width:0%"></div>
+      <div class="occ-bar-seg" id="occSegDisp"   style="width:0%"></div>
     </div>
   </div>
 </div>
@@ -2885,10 +2884,8 @@ function activarSesion(user, perfil) {
   document.getElementById('userPillName').textContent = user;
   const avatarEl = document.getElementById('userPillAvatar');
   if (avatarEl) avatarEl.textContent = (user || '?').charAt(0).toUpperCase();
-  const mesEl = document.getElementById('userPillMes');
-  if (mesEl) mesEl.textContent = CURRENT_MES_LABEL ? ` · ${CURRENT_MES_LABEL}` : '';
-  // El mes es un dato clave: además de la píldora de usuario, lo mostramos
-  // bien a la vista como badge debajo del título del header.
+  // El mes ya se muestra bien a la vista como badge debajo del título del
+  // header (headerMesBadge); no hace falta repetirlo en la píldora de usuario.
   const mesBadgeEl = document.getElementById('headerMesBadge');
   if (mesBadgeEl) {
     if (CURRENT_MES_LABEL) {
