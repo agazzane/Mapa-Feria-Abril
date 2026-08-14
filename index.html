@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Mapa de Stands – Feria Septiembre 2026</title>
+<title>Mapa de Stands – Feria SUCOVI 2026</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -352,13 +352,13 @@
   }
 
   /* ── LOGIN ── */
-  #loginScreen {
+  #loginScreen, #mesScreen {
     position: fixed; inset: 0;
     background: linear-gradient(160deg, #1c1c1e 0%, #2c2c2e 100%);
     display: flex; align-items: center; justify-content: center;
     z-index: 999; padding: 24px;
   }
-  #loginScreen.hidden { display: none; }
+  #loginScreen.hidden, #mesScreen.hidden { display: none; }
   .login-card {
     background: rgba(255,255,255,.97); border-radius: 22px; padding: 32px 28px 36px;
     width: 100%; max-width: 360px; box-shadow: 0 32px 80px rgba(0,0,0,.5);
@@ -554,7 +554,7 @@
 
   /* ── LOADING OVERLAY ── */
   #loadingOverlay {
-    display: none; position: fixed; inset: 0; z-index: 650;
+    display: none; position: fixed; inset: 0; z-index: 500;
     background: rgba(0,0,0,.45); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
     align-items: center; justify-content: center; flex-direction: column; gap: 14px;
     opacity: 0; transition: opacity .18s ease;
@@ -740,8 +740,8 @@
 <!-- ── PANTALLA DE LOGIN ── -->
 <div id="loginScreen">
   <div class="login-card">
-    <div class="login-logo"><img src="https://raw.githubusercontent.com/agazzane/Mapa-Feria-Septiembre/main/SUCOVI.jpg" style="width:64px;height:64px;border-radius:16px;object-fit:cover;"></div>
-    <div class="login-title">Feria Septiembre 2026</div>
+    <div class="login-logo"><img src="https://raw.githubusercontent.com/agazzane/Mapa-Feria-SUCOVI/main/SUCOVI.jpg" style="width:64px;height:64px;border-radius:16px;object-fit:cover;"></div>
+    <div class="login-title">Feria SUCOVI 2026</div>
     <div class="login-sub">Mapa de Stands · <span id="loginVersion"></span></div>
 
     <div class="login-field">
@@ -770,16 +770,36 @@
   </div>
 </div>
 
+<!-- ── PANTALLA DE SELECCIÓN DE MES/FERIA (solo aparece si hay más de un mes habilitado) ── -->
+<div id="mesScreen" class="hidden">
+  <div class="login-card">
+    <div class="login-logo"><img src="https://raw.githubusercontent.com/agazzane/Mapa-Feria-SUCOVI/main/SUCOVI.jpg" style="width:64px;height:64px;border-radius:16px;object-fit:cover;"></div>
+    <div class="login-title">Elegí la feria</div>
+    <div class="login-sub">Hay más de un mes disponible</div>
+
+    <div class="login-field">
+      <label class="login-label" for="mesSelect">Mes</label>
+      <div class="select-wrap">
+        <select id="mesSelect" class="login-select"></select>
+      </div>
+    </div>
+
+    <button class="login-btn" id="mesBtn" onclick="confirmarMes()">Continuar</button>
+    <div class="login-error" id="mesError"></div>
+  </div>
+</div>
+
 <header>
   <div class="header-row-top">
-    <img src="https://raw.githubusercontent.com/agazzane/Mapa-Feria-Septiembre/main/SUCOVI.jpg" class="header-logo-sq" style="object-fit:cover;">
+    <img src="https://raw.githubusercontent.com/agazzane/Mapa-Feria-SUCOVI/main/SUCOVI.jpg" class="header-logo-sq" style="object-fit:cover;">
     <div class="header-title-block">
-      <h1>Feria Septiembre 2026 <span id="headerVersion"></span></h1>
+      <h1>Feria SUCOVI 2026 <span id="headerVersion"></span></h1>
       <p id="subtitle">Sincronizando datos...</p>
     </div>
     <button class="login-user-pill" id="userPill" onclick="cerrarSesion()" style="display:none">
       <span class="user-pill-avatar" id="userPillAvatar">?</span>
       <span id="userPillName"></span>
+      <span id="userPillMes" style="opacity:.65;font-weight:400;"></span>
     </button>
   </div>
 </header>
@@ -1249,7 +1269,7 @@ let lastTap = 0;
 document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTap<300) e.preventDefault(); lastTap=now; }, {passive:false});
 
 // ── VERSIÓN DE LA APP ────────────────────────────────────────────────────────
-const APP_VERSION = 'v1.9';   // ← cambiá solo acá
+const APP_VERSION = 'v1.0';   // ← cambiá solo acá
 document.addEventListener('DOMContentLoaded', () => {
   const lv = document.getElementById('loginVersion');
   const hv = document.getElementById('headerVersion');
@@ -1304,82 +1324,84 @@ function renderMapUI() {
   }
 }
 
-async function load() {
-  if (!modalLocked) showLoading('Cargando mapa...');
-
-  // Dos llamados en paralelo, cada uno abre la planilla por su cuenta:
-  //  - tipo=mapa:   FERIA + PLANO PB + PLANO PA → lo mínimo para pintar el
-  //                 mapa, se muestra apenas llega, sin esperar al otro.
-  //  - tipo=ventas: feriantes + lista negra + precios + usuarios + medios →
-  //                 solo hace falta cuando alguien abre un stand para
-  //                 operar, así que puede llegar un toque después sin que
-  //                 el usuario note demora en ver el mapa.
-  const pMapa   = fetch(`${API_URL}?tipo=mapa`).then(r => r.json());
-  const pVentas = fetch(`${API_URL}?tipo=ventas`).then(r => r.json());
-
+async function load(silencioso = false) {
+  if (!modalLocked && !silencioso) showLoading('Cargando mapa...');
   try {
-    const dataMapa = await pMapa;
-    if (dataMapa.ok === false) throw new Error(dataMapa.error || 'Error al cargar el mapa');
+    // El endpoint principal ahora devuelve todo en una sola respuesta
+    // (mapa + feriantes + lista negra + precios + usuarios + medios), en vez
+    // de 6 requests separados a Apps Script. Cada uno de esos 6 abría la
+    // planilla por su cuenta y competía por los mismos recursos, así que
+    // esto reduce bastante el tiempo de carga.
+    const resMap = await fetch(`${API_URL}?mes=${encodeURIComponent(CURRENT_MES)}`);
+    FULL_DATA = await resMap.json();
 
-    FULL_DATA = dataMapa;
-    renderMapUI();
-    if (!modalLocked) hideLoading();
-  } catch(e) {
-    if (!modalLocked) hideLoading();
-    document.getElementById('subtitle').textContent = 'Error al cargar datos';
-    return; // sin datos de mapa no tiene sentido seguir con ventas acá
-  }
-
-  // Los datos de "ventas" llegan por su cuenta; si fallan, el mapa ya se
-  // ve igual — solo quedan vacías las listas usadas al operar un stand
-  // (autocompletar feriante, medios de pago, combo de vendedores, etc.).
-  try {
-    const dataVentas = await pVentas;
-    FULL_DATA.feriantes  = dataVentas.feriantes;
-    FULL_DATA.listaNegra = dataVentas.listaNegra;
-    FULL_DATA.precios    = dataVentas.precios;
-    FULL_DATA.usuarios   = dataVentas.usuarios;
-    FULL_DATA.medios     = dataVentas.medios;
-
-    if (dataVentas.feriantes)  FERIANTES_LIST = dataVentas.feriantes;
-    if (dataVentas.listaNegra) LISTA_NEGRA    = dataVentas.listaNegra.map(normalizarNombre);
-    if (dataVentas.precios)    PRECIOS_MOB    = dataVentas.precios;
+    if (FULL_DATA.feriantes)  FERIANTES_LIST = FULL_DATA.feriantes;
+    if (FULL_DATA.listaNegra) LISTA_NEGRA    = FULL_DATA.listaNegra.map(normalizarNombre);
+    if (FULL_DATA.precios)    PRECIOS_MOB    = FULL_DATA.precios;
     // Usuarios/vendedores: para que el combo Admin esté disponible
     // independientemente de si hay sesión guardada o no
-    if (dataVentas.usuarios) {
-      VENDEDORES_LIST = dataVentas.usuarios
+    if (FULL_DATA.usuarios) {
+      VENDEDORES_LIST = FULL_DATA.usuarios
         .filter(u => u.perfil === 1)
         .map(u => u.nombre);
     }
-    if (dataVentas.medios) MEDIOS_PAGO = dataVentas.medios;
+    if (FULL_DATA.medios) MEDIOS_PAGO = FULL_DATA.medios;
+
+    renderMapUI();
+    if (!modalLocked && !silencioso) hideLoading();
   } catch(e) {
-    // No hacemos nada más: el mapa ya se ve, y las funciones que usan estas
-    // listas (openModal, cargarMediosPago, etc.) ya manejan el caso de
-    // lista vacía sin romperse.
+    if (!modalLocked && !silencioso) hideLoading();
+    if (!silencioso) document.getElementById('subtitle').textContent = 'Error al cargar datos';
   }
 }
 
-// Refresca SOLO los datos de mapa (FERIA + PLANO PB/PA) contra el servidor
-// y repinta. Se usa después de escribir (asignar, pago) para traer campos
-// calculados por la planilla (como el rubro "rb") que el patch local no
-// puede conocer — a diferencia de load(), NO vuelve a pedir "ventas"
-// (feriantes/lista negra/precios/usuarios/medios), porque esos datos no
-// cambian por asignar un stand o registrar un pago, y pedirlos de nuevo acá
-// solo suma una apertura de planilla de más justo después de escribir.
-async function refreshMapaData() {
+// ── POLLING: refresco automático entre navegadores abiertos ────────────────
+// Cada CHEQUEO_MS consultamos un endpoint liviano de Apps Script que solo
+// devuelve la fecha de última modificación de la hoja FERIA (sin traer
+// datos). Si cambió respecto a la última que vimos, recién ahí pedimos el
+// mapa completo con load(true) — silencioso, sin tapar la pantalla con el
+// spinner. Así todos los que tienen la página abierta ven los cambios de
+// otros sin tener que refrescar manualmente.
+const CHEQUEO_MS = 5000;
+let ultimoTimestampConocido = null;
+let pollingTimer = null;
+let pollEnCurso = false; // evita que se apilen chequeos si el anterior (o el load(true) que dispara) todavía no terminó
+
+async function chequearActualizaciones() {
+  // No competir por red/Apps Script con una acción en curso (venta, pago,
+  // mobiliario, contrato, ingreso, etc.): esas ya van a disparar su propio
+  // load() al terminar, así que el polling puede esperar al próximo ciclo.
+  if (modalLocked) return;
+  if (pollEnCurso) return;
+  pollEnCurso = true;
   try {
-    const res  = await fetch(`${API_URL}?tipo=mapa`);
+    const res  = await fetch(`${API_URL}?tipo=timestamp&mes=${encodeURIComponent(CURRENT_MES)}`);
     const data = await res.json();
-    if (data.ok === false) throw new Error(data.error || 'Error al actualizar el mapa');
-    FULL_DATA.pbData     = data.pbData;
-    FULL_DATA.paData     = data.paData;
-    FULL_DATA.extraData  = data.extraData;
-    renderMapUI();
-  } catch(e) {
-    // Silencioso: el patch local ya está en pantalla, esto es solo para
-    // sincronizar campos calculados; si falla, no vale la pena romper el
-    // flujo de éxito que ya se le mostró al usuario.
+    if (ultimoTimestampConocido === null) {
+      // Primera lectura: solo guardamos el valor, no hace falta recargar
+      // porque load() ya trajo el mapa actualizado en el login.
+      ultimoTimestampConocido = data.ts;
+      return;
+    }
+    if (data.ts !== ultimoTimestampConocido) {
+      ultimoTimestampConocido = data.ts;
+      // modalLocked pudo haberse activado mientras esperábamos el fetch de
+      // arriba (ej. el usuario empezó una venta justo ahora); si es así,
+      // no disparamos el load(true) pesado y dejamos que el próximo ciclo
+      // (ya sin modalLocked) lo retome.
+      if (!modalLocked) await load(true);
+    }
+  } catch (e) {
+    // Falla silenciosa: si hay un corte momentáneo de red, se reintenta
+    // solo en el próximo ciclo, sin molestar al usuario.
+  } finally {
+    pollEnCurso = false;
   }
+}
+
+function iniciarPolling() {
+  if (pollingTimer) clearInterval(pollingTimer);
+  pollingTimer = setInterval(chequearActualizaciones, CHEQUEO_MS);
 }
 
 function buildGrid(gridId, data) {
@@ -1953,7 +1975,7 @@ async function asignarFeriante() {
     const mobParams = MOB_ITEMS.map(m => `${m.key}=${mobQty[m.key]||0}`).join('&');
     const adminParam = (CURRENT_PERFIL === 3 && vendedor) ? `&admin=${encodeURIComponent(CURRENT_USER)}` : '';
     const nuevoParam = selectedFerianteEsNuevo ? '&nuevo=SI' : '&nuevo=NO';
-    const urlAsignar = `${API_URL}?tipo=asignar&stand=${encodeURIComponent(currentStandId)}&feriante=${encodeURIComponent(feriante)}&user=${encodeURIComponent(responsableAsign)}&${mobParams}${adminParam}${nuevoParam}`;
+    const urlAsignar = `${API_URL}?tipo=asignar&mes=${encodeURIComponent(CURRENT_MES)}&stand=${encodeURIComponent(currentStandId)}&feriante=${encodeURIComponent(feriante)}&user=${encodeURIComponent(responsableAsign)}&${mobParams}${adminParam}${nuevoParam}`;
     const resAsignar = await fetch(urlAsignar);
     const dataAsignar = await resAsignar.json();
     if (!dataAsignar.ok) {
@@ -1967,7 +1989,7 @@ async function asignarFeriante() {
 
     // Paso 2: registrar pago 1
     const vendedorParam = (CURRENT_PERFIL === 3 && vendedor) ? `&vendedor=${encodeURIComponent(vendedor)}` : '';
-    const urlPago = `${API_URL}?tipo=pago&stand=${encodeURIComponent(currentStandId)}&num=1&monto=${monto}&medio=${encodeURIComponent(medio)}&user=${encodeURIComponent(CURRENT_USER)}${vendedorParam}`;
+    const urlPago = `${API_URL}?tipo=pago&mes=${encodeURIComponent(CURRENT_MES)}&stand=${encodeURIComponent(currentStandId)}&num=1&monto=${monto}&medio=${encodeURIComponent(medio)}&user=${encodeURIComponent(CURRENT_USER)}${vendedorParam}`;
     const resPago = await fetch(urlPago);
     const dataPago = await resPago.json();
     if (!dataPago.ok) {
@@ -2005,12 +2027,11 @@ async function asignarFeriante() {
     // El patch local de arriba no puede conocer campos que el backend/planilla
     // calculan solos (como el rubro "rb", que sale de una fórmula en la hoja
     // FERIA). Por eso, igual que se hace en cargarPago() cuando un pago salda
-    // la deuda, disparamos un refresco del mapa en paralelo (no hace falta
-    // volver a pedir "ventas" — no cambia por asignar un stand). Como
-    // modalLocked ya está en true, corre calladito atrás de la pantalla de
-    // éxito. Si el usuario aprieta "Continuar" antes de que termine,
-    // showSuccessOverlay se encarga de esperarlo.
-    const mapLoadPromise = refreshMapaData();
+    // la deuda, disparamos un load() real en paralelo — como modalLocked ya
+    // está en true, load() no muestra su propio spinner y corre calladito
+    // atrás de la pantalla de éxito. Si el usuario aprieta "Continuar" antes
+    // de que termine, showSuccessOverlay se encarga de esperarlo.
+    const mapLoadPromise = load();
     await showSuccessOverlay('Stand cargado', `${feriante} · Puesto ${currentStandId}`, mapLoadPromise);
     document.getElementById('modalOverlay').classList.remove('open');
     modalLocked = false;
@@ -2551,7 +2572,7 @@ async function registrarBiometrico(user, perfil) {
     const userId    = new TextEncoder().encode(user);
     const cred = await navigator.credentials.create({ publicKey: {
       challenge,
-      rp: { name: 'Feria Septiembre 2026' },
+      rp: { name: 'Feria SUCOVI 2026' },
       user: { id: userId, name: user, displayName: user },
       pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
       authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
@@ -2583,10 +2604,20 @@ async function loginConBiometrico() {
       userVerification: 'required',
       timeout: 60000
     }});
-    // Verificación local exitosa → activar sesión directamente
+    // Verificación local exitosa → guardamos la sesión, pero como este flujo
+    // no pasa por doLogin() todavía no sabemos qué meses están habilitados;
+    // los pedimos aparte antes de activar la sesión.
     sessionStorage.setItem('feriaUser',   saved.user);
     sessionStorage.setItem('feriaPerfil', String(saved.perfil));
-    activarSesion(saved.user, saved.perfil);
+    try {
+      const resM  = await fetch(`${API_URL}?tipo=meses`);
+      const dataM = await resM.json();
+      procesarLoginExitoso(saved.user, saved.perfil, dataM.ok ? dataM.meses : []);
+    } catch(errM) {
+      errEl.textContent = 'Error de conexión al cargar las ferias disponibles.';
+      btn.disabled = false;
+      btn.innerHTML = '<span style="font-size:20px">🪪</span> Entrar sin contraseña';
+    }
   } catch(e) {
     // Si cancela o falla, mostrar el formulario normal para entrar con contraseña
     errEl.textContent = 'Verificación cancelada. Ingresá con tu contraseña.';
@@ -2619,25 +2650,97 @@ function mostrarBtnBio() {
 }
 
 // ── LOGIN ────────────────────────────────────────────────────────────────────
-let CURRENT_USER   = null;
-let CURRENT_PERFIL = 1;   // 1=VENDEDOR, 2=VISUALIZADOR, 3=ADMIN
+let CURRENT_USER      = null;
+let CURRENT_PERFIL    = 1;   // 1=VENDEDOR, 2=VISUALIZADOR, 3=ADMIN
+let CURRENT_MES       = null;  // Clave del mes elegido (ej. "2026-03") — viaja en cada llamada a la API
+let CURRENT_MES_LABEL = '';    // Label para mostrar (ej. "Marzo 2026")
+let MESES_PENDIENTES  = null;  // {user, perfil} mientras se espera que el usuario elija el mes
 
-async function initLogin() {
-  // ¿Ya hay sesión activa?
-  const saved = sessionStorage.getItem('feriaUser');
-  if (saved) {
-    const savedPerfil = parseInt(sessionStorage.getItem('feriaPerfil') || '1', 10) || 1;
-    activarSesion(saved, savedPerfil);
+// Se llama después de un login exitoso (por password o biométrico), con la
+// lista de meses habilitados que devolvió el backend. Si hay uno solo, lo
+// selecciona automático y entra directo; si hay más de uno, muestra el
+// selector; si no hay ninguno, no deja entrar.
+function procesarLoginExitoso(user, perfil, meses) {
+  meses = meses || [];
+
+  if (meses.length === 0) {
+    const errEl = document.getElementById('loginError');
+    if (errEl) errEl.textContent = 'No hay ninguna feria habilitada en este momento.';
+    sessionStorage.removeItem('feriaUser');
+    sessionStorage.removeItem('feriaPerfil');
+    const btn = document.getElementById('loginBtn');
+    if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
     return;
   }
-  // ¿Hay credencial biométrica guardada? → mostrar el botón y esperar el tap
-  // del usuario. IMPORTANTE: no se dispara loginConBiometrico() automáticamente
-  // acá, porque muchos navegadores (sobre todo Safari/iOS) exigen un gesto
-  // explícito del usuario para navigator.credentials.get(); si se llama sola
-  // al cargar la página, la promesa puede quedar colgada hasta el timeout de
-  // 60s, dejando el botón trabado en "Verificando...".
+
+  if (meses.length === 1) {
+    CURRENT_MES       = meses[0].clave;
+    CURRENT_MES_LABEL = meses[0].mes;
+    sessionStorage.setItem('feriaMes', CURRENT_MES);
+    sessionStorage.setItem('feriaMesLabel', CURRENT_MES_LABEL);
+    activarSesion(user, perfil);
+    return;
+  }
+
+  // Más de un mes habilitado: mostrar selector antes de entrar
+  MESES_PENDIENTES = { user, perfil };
+  const sel = document.getElementById('mesSelect');
+  sel.innerHTML = meses.map(m => `<option value="${m.clave}">${m.mes}</option>`).join('');
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('mesScreen').classList.remove('hidden');
+}
+
+function confirmarMes() {
+  if (!MESES_PENDIENTES) return;
+  const sel   = document.getElementById('mesSelect');
+  const clave = sel.value;
+  const label = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : '';
+  if (!clave) {
+    document.getElementById('mesError').textContent = 'Elegí un mes';
+    return;
+  }
+  CURRENT_MES       = clave;
+  CURRENT_MES_LABEL = label;
+  sessionStorage.setItem('feriaMes', CURRENT_MES);
+  sessionStorage.setItem('feriaMesLabel', CURRENT_MES_LABEL);
+  document.getElementById('mesScreen').classList.add('hidden');
+  const { user, perfil } = MESES_PENDIENTES;
+  MESES_PENDIENTES = null;
+  activarSesion(user, perfil);
+}
+
+async function initLogin() {
+  // ¿Ya hay sesión activa (usuario Y mes)?
+  const savedUser = sessionStorage.getItem('feriaUser');
+  const savedMes  = sessionStorage.getItem('feriaMes');
+  if (savedUser && savedMes) {
+    const savedPerfil = parseInt(sessionStorage.getItem('feriaPerfil') || '1', 10) || 1;
+    CURRENT_MES       = savedMes;
+    CURRENT_MES_LABEL = sessionStorage.getItem('feriaMesLabel') || '';
+    activarSesion(savedUser, savedPerfil);
+    return;
+  }
+  // Caso raro: había sesión de usuario guardada pero no se llegó a elegir el
+  // mes (ej. se cerró el navegador justo entre el login y la selección).
+  // Volvemos a pedir los meses habilitados sin pedirle la contraseña de nuevo.
+  if (savedUser && !savedMes) {
+    const savedPerfil = parseInt(sessionStorage.getItem('feriaPerfil') || '1', 10) || 1;
+    try {
+      const res  = await fetch(API_URL + '?tipo=meses');
+      const data = await res.json();
+      procesarLoginExitoso(savedUser, savedPerfil, data.ok ? data.meses : []);
+      return;
+    } catch(err) {
+      sessionStorage.removeItem('feriaUser');
+      sessionStorage.removeItem('feriaPerfil');
+      // Si falla, seguimos de largo hacia la pantalla de login normal
+    }
+  }
+  // ¿Hay credencial biométrica guardada? → disparar directo, sin pedir contraseña
   if (bioDisponible() && localStorage.getItem(BIO_STORAGE_KEY)) {
     mostrarBtnBio();
+    loginConBiometrico(); // si el usuario cancela, queda el botón + el form abajo
+    return;
   }
   // Cargar lista de usuarios para el combo del login
   try {
@@ -2687,7 +2790,8 @@ async function doLogin() {
       if (bioDisponible() && !localStorage.getItem(BIO_STORAGE_KEY)) {
         registrarBiometrico(data.user, perfil); // no bloqueante
       }
-      activarSesion(data.user, perfil);
+      // El login ya trae la lista de meses habilitados en la misma respuesta
+      procesarLoginExitoso(data.user, perfil, data.meses);
     } else {
       errEl.textContent = data.error || 'Usuario o contraseña incorrectos';
     }
@@ -2705,6 +2809,8 @@ function activarSesion(user, perfil) {
   document.getElementById('userPillName').textContent = user;
   const avatarEl = document.getElementById('userPillAvatar');
   if (avatarEl) avatarEl.textContent = (user || '?').charAt(0).toUpperCase();
+  const mesEl = document.getElementById('userPillMes');
+  if (mesEl) mesEl.textContent = CURRENT_MES_LABEL ? ` · ${CURRENT_MES_LABEL}` : '';
   // Mostrar badge de perfil en la píldora de usuario
   const pillEl = document.getElementById('userPill');
   pillEl.style.display = 'inline-flex';
@@ -2725,12 +2831,15 @@ function activarSesion(user, perfil) {
   const noIngresadosBtn = document.getElementById('filtroNoIngresadosBtn');
   if (noIngresadosBtn) noIngresadosBtn.style.display = (CURRENT_PERFIL === 3) ? '' : 'none';
   load(); // carga el mapa recién después del login
+  iniciarPolling(); // a partir de ahora, chequea cada CHEQUEO_MS si hubo cambios
 }
 
 function cerrarSesion() {
   if (!confirm('¿Cerrar sesión?')) return;
   sessionStorage.removeItem('feriaUser');
   sessionStorage.removeItem('feriaPerfil');
+  sessionStorage.removeItem('feriaMes');
+  sessionStorage.removeItem('feriaMesLabel');
   location.reload();
 }
 
@@ -2741,7 +2850,7 @@ let pagoNumActual = 0;
 async function cargarMediosPago() {
   if (MEDIOS_PAGO.length) return;
   try {
-    const res  = await fetch(`${API_URL}?tipo=medios`);
+    const res  = await fetch(`${API_URL}?tipo=medios&mes=${encodeURIComponent(CURRENT_MES)}`);
     const data = await res.json();
     if (data.ok && data.medios) MEDIOS_PAGO = data.medios;
   } catch(e) { MEDIOS_PAGO = []; }
@@ -2840,7 +2949,7 @@ async function cargarPago() {
   setBtnBusy(btn, 'Guardando...');
   try {
     const vendedorParam = vendedor ? `&vendedor=${encodeURIComponent(vendedor)}` : '';
-    const url  = `${API_URL}?tipo=pago&stand=${encodeURIComponent(currentStandId)}&num=${pagoNumActual}&monto=${monto}&medio=${encodeURIComponent(medio)}&user=${encodeURIComponent(CURRENT_USER)}${vendedorParam}`;
+    const url  = `${API_URL}?tipo=pago&mes=${encodeURIComponent(CURRENT_MES)}&stand=${encodeURIComponent(currentStandId)}&num=${pagoNumActual}&monto=${monto}&medio=${encodeURIComponent(medio)}&user=${encodeURIComponent(CURRENT_USER)}${vendedorParam}`;
     const res  = await fetch(url);
     const data = await res.json();
     if (data.ok) {
@@ -2870,7 +2979,7 @@ async function cargarPago() {
         setBtnBusy(btn, 'Actualizando mapa...');
         await new Promise(r => setTimeout(r, 900));
         lockModal('Actualizando mapa...');
-        await refreshMapaData();
+        await load();
         document.getElementById('modalOverlay').classList.remove('open');
         unlockModal();
       } else {
@@ -2963,6 +3072,7 @@ async function guardarNuevoFeriante() {
   try {
     const params = new URLSearchParams({
       tipo:    'altaferiante',
+      mes:     CURRENT_MES,
       nombre,
       tipof:   tipo,
       rubro,
@@ -3254,7 +3364,7 @@ async function venderMobAdicional() {
 
   try {
     const mobParams = MOB_ITEMS.map(m => `${m.key}=${mobAdicionalQty[m.key]||0}`).join('&');
-    const url = `${API_URL}?tipo=mobadic&stand=${encodeURIComponent(currentStandId)}&monto=${total}&medio=${encodeURIComponent(medio)}&user=${encodeURIComponent(CURRENT_USER)}&mobdesc=${encodeURIComponent(mobDesc)}&${mobParams}`;
+    const url = `${API_URL}?tipo=mobadic&mes=${encodeURIComponent(CURRENT_MES)}&stand=${encodeURIComponent(currentStandId)}&monto=${total}&medio=${encodeURIComponent(medio)}&user=${encodeURIComponent(CURRENT_USER)}&mobdesc=${encodeURIComponent(mobDesc)}&${mobParams}`;
     const res  = await fetch(url);
     const data = await res.json();
     if (data.ok) {
@@ -3325,7 +3435,7 @@ async function guardarComentario() {
   setBtnBusy(btn, 'Guardando...');
 
   try {
-    const url  = `${API_URL}?tipo=comentario&stand=${encodeURIComponent(currentStandId)}&user=${encodeURIComponent(CURRENT_USER)}&texto=${encodeURIComponent(texto)}`;
+    const url  = `${API_URL}?tipo=comentario&mes=${encodeURIComponent(CURRENT_MES)}&stand=${encodeURIComponent(currentStandId)}&user=${encodeURIComponent(CURRENT_USER)}&texto=${encodeURIComponent(texto)}`;
     const res  = await fetch(url);
     const data = await res.json();
     if (data.ok) {
@@ -3380,7 +3490,7 @@ async function confirmarContrato() {
 
   setBtnBusy(btn, 'Confirmando...');
   try {
-    const url  = `${API_URL}?tipo=contrato&stand=${encodeURIComponent(currentStandId)}&user=${encodeURIComponent(CURRENT_USER)}`;
+    const url  = `${API_URL}?tipo=contrato&mes=${encodeURIComponent(CURRENT_MES)}&stand=${encodeURIComponent(currentStandId)}&user=${encodeURIComponent(CURRENT_USER)}`;
     const res  = await fetch(url);
     const data = await res.json();
 
@@ -3487,7 +3597,7 @@ async function darIngreso() {
 
   setBtnBusy(btn, 'Registrando...');
   try {
-    const url  = `${API_URL}?tipo=ingreso&stand=${encodeURIComponent(currentStandId)}&user=${encodeURIComponent(CURRENT_USER)}`;
+    const url  = `${API_URL}?tipo=ingreso&mes=${encodeURIComponent(CURRENT_MES)}&stand=${encodeURIComponent(currentStandId)}&user=${encodeURIComponent(CURRENT_USER)}`;
     const res  = await fetch(url);
     const data = await res.json();
 
