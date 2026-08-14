@@ -100,7 +100,7 @@
     flex-shrink: 0; text-transform: uppercase;
   }
 
-  /* ── BARRA DE OCUPACIÓN — una sola línea: %, barra larga, cuadraditos con valores ── */
+  /* ── BARRA DE OCUPACIÓN — fila superior (%, barra) + fila de chips grandes debajo ── */
   .occ-bar-wrap {
     background: #212d42;
     border-bottom: 1px solid rgba(255,255,255,.08);
@@ -120,15 +120,22 @@
   .occ-bar-seg#occSegPagado { background: #30d158; }
   .occ-bar-seg#occSegSenado { background: #ffd60a; }
   .occ-bar-seg#occSegDisp   { background: #e5e5ea; }
-  .occ-chips { display: flex; gap: 5px; flex-shrink: 0; }
+  .occ-chips { display: flex; gap: 8px; margin-top: 10px; }
   .occ-chip {
-    font-size: 12px; font-weight: 700; line-height: 1;
-    padding: 5px 8px; border-radius: 7px; min-width: 22px;
-    text-align: center;
+    flex: 1; border-radius: 8px; padding: 6px 8px; text-align: center;
   }
-  .occ-chip-pagado { background: rgba(48,209,88,.2);  color: #30d158; }
-  .occ-chip-senado { background: rgba(255,214,10,.2); color: #ffd60a; }
-  .occ-chip-libre  { background: rgba(255,255,255,.12); color: rgba(255,255,255,.85); }
+  .occ-chip-num {
+    font-size: 19px; font-weight: 700; line-height: 1.1;
+  }
+  .occ-chip-lbl {
+    font-size: 10px; color: rgba(255,255,255,.6); margin-top: 1px;
+  }
+  .occ-chip-pagado { background: rgba(48,209,88,.15); }
+  .occ-chip-pagado .occ-chip-num { color: #30d158; }
+  .occ-chip-senado { background: rgba(255,214,10,.15); }
+  .occ-chip-senado .occ-chip-num { color: #ffd60a; }
+  .occ-chip-libre  { background: rgba(255,255,255,.1); }
+  .occ-chip-libre  .occ-chip-num { color: #ffffff; }
 
   /* ── STATS (oculto) ── */
   .stats { display: none; }
@@ -823,10 +830,19 @@
       <div class="occ-bar-seg" id="occSegSenado" style="width:0%"></div>
       <div class="occ-bar-seg" id="occSegDisp"   style="width:0%"></div>
     </div>
-    <div class="occ-chips" id="occDetail">
-      <span class="occ-chip occ-chip-pagado" id="occValPagado">—</span>
-      <span class="occ-chip occ-chip-senado" id="occValSenado">—</span>
-      <span class="occ-chip occ-chip-libre"  id="occValDisp">—</span>
+  </div>
+  <div class="occ-chips" id="occDetail">
+    <div class="occ-chip occ-chip-pagado">
+      <div class="occ-chip-num" id="occValPagado">—</div>
+      <div class="occ-chip-lbl">Pagado</div>
+    </div>
+    <div class="occ-chip occ-chip-senado">
+      <div class="occ-chip-num" id="occValSenado">—</div>
+      <div class="occ-chip-lbl">Señado</div>
+    </div>
+    <div class="occ-chip occ-chip-libre">
+      <div class="occ-chip-num" id="occValDisp">—</div>
+      <div class="occ-chip-lbl">Libre</div>
     </div>
   </div>
 </div>
@@ -1107,12 +1123,12 @@
           <div class="pago-input-row">
             <div class="pago-input-group">
               <label class="pago-label">Monto ($)</label>
-              <input type="number" class="pago-input" id="pagoMonto" placeholder="0" min="1">
+              <input type="number" class="pago-input" id="pagoMonto" placeholder="0" min="1" oninput="checkPagoBtn()">
             </div>
             <div class="pago-input-group">
               <label class="pago-label">Medio de pago</label>
               <div class="pago-select-wrap">
-                <select class="pago-select" id="pagoMedio">
+                <select class="pago-select" id="pagoMedio" onchange="checkPagoBtn()">
                   <option value="">Cargando...</option>
                 </select>
               </div>
@@ -1122,12 +1138,12 @@
           <div class="pago-input-group" id="pagoVendedorGroup" style="display:none;margin-top:4px">
             <label class="pago-label">Registrar en nombre de</label>
             <div class="pago-select-wrap">
-              <select class="pago-select" id="pagoVendedor">
+              <select class="pago-select" id="pagoVendedor" onchange="checkPagoBtn()">
                 <option value="">— Elegí vendedor —</option>
               </select>
             </div>
           </div>
-          <button class="pago-btn" id="pagoBtn" onclick="cargarPago()">Registrar pago</button>
+          <button class="pago-btn" id="pagoBtn" onclick="cargarPago()" disabled>Registrar pago</button>
           <div class="pago-msg" id="pagoMsg"></div>
         </div>
       </div>
@@ -1279,7 +1295,7 @@ let lastTap = 0;
 document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTap<300) e.preventDefault(); lastTap=now; }, {passive:false});
 
 // ── VERSIÓN DE LA APP ────────────────────────────────────────────────────────
-const APP_VERSION = 'v3.0';   // ← cambiá solo acá
+const APP_VERSION = 'v3.1';   // ← cambiá solo acá
 document.addEventListener('DOMContentLoaded', () => {
   const lv = document.getElementById('loginVersion');
   const hv = document.getElementById('headerVersion');
@@ -1803,6 +1819,7 @@ function openModal(id, evt) {
     const yaIngreso  = extra.ingreso === 'SI';
     const contratoOk = extra.contrato === 'SI';
     const pagadoOk   = estado === 'Pagado';
+    const senadoOk   = estado === 'Señado';
 
     ingresoSection.style.display = 'block';
     contratoBtn.style.display = 'none';
@@ -1819,13 +1836,16 @@ function openModal(id, evt) {
       ingresoBtn.textContent = '🚪 Dar ingreso';
       ingresoInfo.textContent = '';
       ingresoInfo.className = 'ingreso-info';
-    } else if (pagadoOk && !contratoOk) {
-      // Pagado al 100% pero falta firmar el contrato: se ofrece confirmarlo acá mismo.
+    } else if (!contratoOk && (pagadoOk || senadoOk)) {
+      // Pagado o Señado pero falta firmar el contrato: se ofrece confirmarlo acá mismo,
+      // sin necesidad de esperar a que el stand esté 100% pagado.
       ingresoBtn.style.display = 'none';
       contratoBtn.style.display = 'block';
       contratoBtn.disabled = false;
       contratoBtn.textContent = '✍️ Confirmar firma de contrato';
-      ingresoInfo.textContent = '⏳ Falta el contrato firmado para poder dar el ingreso.';
+      ingresoInfo.textContent = pagadoOk
+        ? '⏳ Falta el contrato firmado para poder dar el ingreso.'
+        : '✍️ Podés confirmar la firma del contrato aunque el stand siga Señado. Para dar el ingreso además va a faltar completar el pago.';
       ingresoInfo.className = 'ingreso-info pending';
     } else {
       ingresoBtn.style.display = 'none';
@@ -2970,6 +2990,7 @@ function renderPagos(extra, soloHechos) {
   pagoNumActual = siguiente.num;
   document.getElementById('pagoFormTitle').textContent = `Cargar Pago ${siguiente.num}`;
   document.getElementById('pagoMonto').value = '';
+  document.getElementById('pagoBtn').disabled = true;
   pagoForm.style.display = 'flex';
   cargarMediosPago().then(() => {
     const sel = document.getElementById('pagoMedio');
@@ -2989,7 +3010,33 @@ function renderPagos(extra, soloHechos) {
     } else {
       vendedorGroup.style.display = 'none';
     }
+    checkPagoBtn();
   });
+}
+
+function checkPagoBtn() {
+  const btn   = document.getElementById('pagoBtn');
+  const msgEl = document.getElementById('pagoMsg');
+  const monto = Number(document.getElementById('pagoMonto').value);
+  const medio = document.getElementById('pagoMedio').value.trim();
+  const extra = (FULL_DATA.extraData||{})[currentStandId] || {};
+  const debe  = Number(extra.d || 0);
+
+  // Vendedor: obligatorio solo si el combo está visible (perfil Admin)
+  const vendedorGroup = document.getElementById('pagoVendedorGroup');
+  const vendedorOk = (vendedorGroup.style.display === 'none')
+    || !!document.getElementById('pagoVendedor').value.trim();
+
+  // Validar monto vs Debe, igual que al guardar
+  if (monto > 0 && debe > 0 && monto > debe) {
+    msgEl.textContent = `El monto no puede superar el Debe ($${debe.toLocaleString('es-AR')}).`;
+    msgEl.className   = 'pago-msg err';
+    btn.disabled = true;
+    return;
+  }
+  msgEl.textContent = '';
+  msgEl.className   = 'pago-msg';
+  btn.disabled = !(monto > 0 && medio && vendedorOk);
 }
 
 async function cargarPago() {
