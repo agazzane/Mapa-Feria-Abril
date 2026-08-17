@@ -100,6 +100,19 @@
     flex-shrink: 0; text-transform: uppercase;
   }
 
+  /* ── GRUPO COLAPSABLE (barra de ocupación + tabs + buscador/filtros) ──
+     Técnica grid-template-rows 1fr→0fr: anima suave sin necesitar medir
+     alturas en JS, y al colapsar el .floor (flex:1) ocupa el espacio libre
+     automáticamente, porque siguen en el mismo flex column que el body. */
+  .scroll-collapse {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows .28s ease;
+    flex-shrink: 0;
+  }
+  .scroll-collapse.collapsed { grid-template-rows: 0fr; }
+  .scroll-collapse-inner { overflow: hidden; min-height: 0; }
+
   /* ── BARRA DE OCUPACIÓN — fila superior (%, barra) + fila de chips grandes debajo ── */
   .occ-bar-wrap {
     background: #212d42;
@@ -822,6 +835,13 @@
   </div>
 </header>
 
+<!-- ── GRUPO COLAPSABLE: se oculta al hacer scroll hacia abajo en el mapa y
+     reaparece al scrollear hacia arriba, para darle más lugar al mapa en
+     pantallas chicas. El <header> de arriba queda siempre fijo, afuera de
+     este grupo. Ver scrollCollapseGroup más abajo en el script. ── -->
+<div class="scroll-collapse" id="scrollCollapseGroup">
+<div class="scroll-collapse-inner">
+
 <!-- ── BARRA DE OCUPACIÓN (cuadrados con cantidades arriba, barra abajo) ── -->
 <div class="occ-bar-wrap" id="occBarWrap">
   <div class="occ-chips" id="occDetail">
@@ -866,6 +886,9 @@
     <button class="filter-btn" id="filtroDispBtn" onclick="toggleFiltro('disponible', this)">🔓 Disponible</button>
     <button class="filter-btn" id="filtroNoIngresadosBtn" style="display:none" onclick="toggleFiltro('noIngresados', this)">🚪 No ingresaron</button>
   </div>
+</div>
+
+</div>
 </div>
 
 <div class="floor active" id="floor-pb">
@@ -1297,7 +1320,7 @@ let lastTap = 0;
 document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTap<300) e.preventDefault(); lastTap=now; }, {passive:false});
 
 // ── VERSIÓN DE LA APP ────────────────────────────────────────────────────────
-const APP_VERSION = 'v3.2';   // ← cambiá solo acá
+const APP_VERSION = 'v3.3';   // ← cambiá solo acá
 document.addEventListener('DOMContentLoaded', () => {
   const lv = document.getElementById('loginVersion');
   const hv = document.getElementById('headerVersion');
@@ -1577,6 +1600,7 @@ function switchFloor(f, btn) {
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   applyFilters();
+  document.getElementById('scrollCollapseGroup')?.classList.remove('collapsed');
   // Esperamos al próximo repintado real (en vez de un setTimeout con tiempo fijo)
   // para que el piso ya esté visible y con su layout final antes de reaplicar el zoom.
   requestAnimationFrame(() => requestAnimationFrame(() => { aplicarZoom(); buildMinimap(); }));
@@ -2716,9 +2740,37 @@ function scheduleMinimapViewportUpdate() {
   if (minimapRaf) return;
   minimapRaf = requestAnimationFrame(() => { minimapRaf = null; updateMinimapViewport(); });
 }
+
+// ── OCULTAR/MOSTRAR BARRA DE OCUPACIÓN + TABS + BUSCADOR AL SCROLLEAR ──────
+// Al scrollear hacia abajo dentro del mapa (.map-scroll) se oculta ese grupo
+// para darle más lugar al mapa; al scrollear hacia arriba, reaparece. Cada
+// piso (.map-scroll) trackea su propio último scrollTop, porque son
+// contenedores independientes (Planta Baja / Planta Alta).
+const SCROLL_COLLAPSE_THRESHOLD_PX = 8; // ignora micro-movimientos (rebote iOS, etc.)
+const scrollCollapseLastTop = new WeakMap();
+
+function handleScrollCollapse(scrollEl) {
+  const group = document.getElementById('scrollCollapseGroup');
+  if (!group) return;
+  const top = Math.max(0, scrollEl.scrollTop);
+  const lastTop = scrollCollapseLastTop.get(scrollEl) ?? 0;
+  const delta = top - lastTop;
+
+  if (top <= 0) {
+    group.classList.remove('collapsed'); // siempre visible arriba del todo
+  } else if (delta > SCROLL_COLLAPSE_THRESHOLD_PX) {
+    group.classList.add('collapsed'); // bajando
+  } else if (delta < -SCROLL_COLLAPSE_THRESHOLD_PX) {
+    group.classList.remove('collapsed'); // subiendo
+  }
+  scrollCollapseLastTop.set(scrollEl, top);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.map-scroll').forEach(el => {
     el.addEventListener('scroll', scheduleMinimapViewportUpdate, { passive: true });
+    scrollCollapseLastTop.set(el, 0);
+    el.addEventListener('scroll', () => handleScrollCollapse(el), { passive: true });
   });
   window.addEventListener('resize', scheduleMinimapViewportUpdate);
 });
