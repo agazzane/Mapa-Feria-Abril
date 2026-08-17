@@ -101,17 +101,20 @@
   }
 
   /* ── GRUPO COLAPSABLE (barra de ocupación + tabs + buscador/filtros) ──
-     Técnica grid-template-rows 1fr→0fr: anima suave sin necesitar medir
-     alturas en JS, y al colapsar el .floor (flex:1) ocupa el espacio libre
-     automáticamente, porque siguen en el mismo flex column que el body. */
+     Animación por max-height en píxeles (no grid-template-rows): esa técnica
+     se ve perfecto en desktop, pero varios navegadores mobile no la animan
+     bien (saltan de una en vez de interpolar) — max-height en px es mucho
+     más parejo entre navegadores. La altura real se mide en JS (ver
+     updateScrollCollapseMaxHeight) y se guarda en la variable CSS de abajo,
+     porque el contenido no siempre mide lo mismo (ej. tamaño de letra del
+     sistema, orientación del celular). */
   .scroll-collapse {
-    display: grid;
-    grid-template-rows: 1fr;
-    transition: grid-template-rows .28s ease;
+    max-height: var(--scroll-collapse-h, 500px);
+    overflow: hidden;
+    transition: max-height .28s ease;
     flex-shrink: 0;
   }
-  .scroll-collapse.collapsed { grid-template-rows: 0fr; }
-  .scroll-collapse-inner { overflow: hidden; min-height: 0; }
+  .scroll-collapse.collapsed { max-height: 0 !important; }
 
   /* ── BARRA DE OCUPACIÓN — fila superior (%, barra) + fila de chips grandes debajo ── */
   .occ-bar-wrap {
@@ -2761,12 +2764,25 @@ function handleScrollCollapse(scrollEl) {
   }
 }
 
+// Mide la altura real del grupo (occ-bar + tabs + buscador) y la guarda en
+// una variable CSS, para que la animación de max-height sepa hasta dónde
+// expandirse. scrollHeight da la altura real del contenido sin importar que
+// hoy esté clippeado por overflow:hidden/max-height — por eso no hace falta
+// sacarle la clase "collapsed" para medir. Se llama al cargar y en cada
+// resize (cambio de orientación del celular, teclado que aparece, etc.).
+function updateScrollCollapseMaxHeight() {
+  const group = document.getElementById('scrollCollapseGroup');
+  if (!group) return;
+  group.style.setProperty('--scroll-collapse-h', group.scrollHeight + 'px');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  updateScrollCollapseMaxHeight();
   document.querySelectorAll('.map-scroll').forEach(el => {
     el.addEventListener('scroll', scheduleMinimapViewportUpdate, { passive: true });
     el.addEventListener('scroll', () => handleScrollCollapse(el), { passive: true });
   });
-  window.addEventListener('resize', scheduleMinimapViewportUpdate);
+  window.addEventListener('resize', () => { scheduleMinimapViewportUpdate(); updateScrollCollapseMaxHeight(); });
 });
 
 // Recentra el mapa automáticamente cada vez que cambia el tamaño del
@@ -2786,7 +2802,7 @@ if (window.ResizeObserver) {
 }
 // Pasada extra de seguridad: cuando TODO terminó de cargar (imágenes,
 // fuentes, todo), volvemos a centrar una vez más por las dudas.
-window.addEventListener('load', () => { aplicarZoom(); buildMinimap(); });
+window.addEventListener('load', () => { aplicarZoom(); buildMinimap(); updateScrollCollapseMaxHeight(); });
 // ── BIOMÉTRICO (WebAuthn) ────────────────────────────────────────────────────
 const BIO_STORAGE_KEY = 'feriaBioCredential'; // { user, perfil, credentialId (base64) }
 
