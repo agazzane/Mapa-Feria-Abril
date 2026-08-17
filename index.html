@@ -1456,7 +1456,7 @@ function enviarPerfFrontend(tipo, tiempos) {
 // mapa completo con load(true) — silencioso, sin tapar la pantalla con el
 // spinner. Así todos los que tienen la página abierta ven los cambios de
 // otros sin tener que refrescar manualmente.
-const CHEQUEO_MS = 300000; // 5 minutos (antes 5s — se espació para no competir con acciones reales)
+const CHEQUEO_MS = 60000; // 5 minutos (antes 5s — se espació para no competir con acciones reales)
 let ultimoTimestampConocido = null;
 let pollingTimer = null;
 let pollEnCurso = false; // evita que se apilen chequeos si el anterior (o el load(true) que dispara) todavía no terminó
