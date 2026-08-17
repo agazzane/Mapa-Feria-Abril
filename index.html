@@ -1297,7 +1297,7 @@ let lastTap = 0;
 document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTap<300) e.preventDefault(); lastTap=now; }, {passive:false});
 
 // ── VERSIÓN DE LA APP ────────────────────────────────────────────────────────
-const APP_VERSION = 'v3.1';   // ← cambiá solo acá
+const APP_VERSION = 'v3.2';   // ← cambiá solo acá
 document.addEventListener('DOMContentLoaded', () => {
   const lv = document.getElementById('loginVersion');
   const hv = document.getElementById('headerVersion');
@@ -1644,6 +1644,7 @@ let modalHasZoomOrigin = false;
 
 function openModal(id, evt) {
   currentStandId = id;
+  pendingFerianteFixReload = null;
   const data  = (FULL_DATA.pbData||{})[id] || (FULL_DATA.paData||{})[id] || {};
   const extra = (FULL_DATA.extraData||{})[id] || {};
   const estado = data.e || 'Disponible';
@@ -2051,7 +2052,19 @@ async function asignarFeriante() {
     const resAsignar = await fetch(urlAsignar);
     const dataAsignar = await resAsignar.json();
     if (!dataAsignar.ok) {
-      msgEl.textContent = dataAsignar.error || 'Error al asignar el feriante.';
+      const errorMsg = dataAsignar.error || 'Error al asignar el feriante.';
+      if (errorMsg.includes('lista autorizada')) {
+        // Caso: el feriante quedó desactualizado en el cliente (ej. se borró
+        // y volvió a cargar en la hoja mientras este navegador tenía el mapa
+        // viejo abierto). Avisamos y disparamos el reload del mapa/feriantes
+        // ya mismo, sin esperar a que cierre el popup — guardamos la promesa
+        // para poder esperarla si cierra antes de que termine (ver
+        // closeModal() y el swipe-down más abajo).
+        msgEl.textContent = `⚠️ ${errorMsg}. Estamos actualizando la lista de feriantes — cerrá esta ficha e intentá de nuevo.`;
+        pendingFerianteFixReload = load();
+      } else {
+        msgEl.textContent = errorMsg;
+      }
       msgEl.className = 'assign-msg err';
       clearBtnBusy(btn, 'Asignar y señar');
       modalLocked = false;
@@ -2121,6 +2134,14 @@ async function asignarFeriante() {
 }
 
 let modalLocked = false;
+
+// Promesa de un load() disparado por asignarFeriante() cuando el backend
+// rechaza el feriante por estar desactualizado en el cliente (ver ahí
+// arriba). Si hay una pendiente, closeModal() y el swipe-down la esperan
+// (mostrando la ruedita) antes de cerrar, para no cerrar "a mitad" de la
+// recarga. Se resetea en openModal() para no quedar pisando cierres futuros
+// que no tengan nada que ver con este caso puntual.
+let pendingFerianteFixReload = null;
 
 // ── LOADING OVERLAY ──────────────────────────────────────────────────────────
 let _loadingInterval = null;
@@ -2405,9 +2426,29 @@ function unlockModal() {
   hideLoading();
 }
 
-function closeModal(e) {
+async function closeModal(e) {
   if (modalLocked) return;
   if (!e || e.target===document.getElementById('modalOverlay') || e.currentTarget.tagName==='BUTTON') {
+    // Si asignarFeriante() disparó un reload por feriante desactualizado y
+    // todavía no terminó, lo esperamos acá antes de cerrar — mostrando la
+    // ruedita para que el usuario sepa que hay algo en curso — así al volver
+    // a abrir el stand ya tiene el mapa y la lista de feriantes al día.
+    if (pendingFerianteFixReload) {
+      const reload = pendingFerianteFixReload;
+      pendingFerianteFixReload = null;
+      lockModal('Actualizando mapa...');
+      try { await reload; } catch(err) {}
+      unlockModal();
+    }
+    await ejecutarCierreModal();
+  }
+}
+
+// Animación de cierre del modal, separada de closeModal() para poder
+// reusarla desde el swipe-down (que hoy la dispara sin pasar por
+// closeModal()).
+function ejecutarCierreModal() {
+  return new Promise(resolve => {
     const modalEl = document.querySelector('.modal');
     if (modalHasZoomOrigin) {
       modalEl.style.transition = 'transform .32s cubic-bezier(.36,0,.66,-0.01), opacity .28s ease';
@@ -2419,15 +2460,17 @@ function closeModal(e) {
         modalEl.style.transform      = '';
         modalEl.style.opacity        = '';
         modalEl.style.transformOrigin = '';
+        resolve();
       }, 320);
     } else {
       modalEl.classList.add('closing');
       setTimeout(() => {
         document.getElementById('modalOverlay').classList.remove('open');
         modalEl.classList.remove('closing');
+        resolve();
       }, 360);
     }
-  }
+  });
 }
 
 const ZOOM_STEPS = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3];
@@ -3873,9 +3916,20 @@ initLogin();
     modalEl.style.transition = '';
     if (delta > 90) {
       modalEl.style.transform = `translateY(110%)`;
-      setTimeout(() => {
+      setTimeout(async () => {
         overlay.classList.remove('open');
         modalEl.style.transform = '';
+        // Mismo chequeo que closeModal(): si asignarFeriante() dejó un
+        // reload en curso por feriante desactualizado, lo esperamos acá
+        // mostrando la ruedita, para que quede reflejado antes de que el
+        // usuario vuelva a intentar.
+        if (pendingFerianteFixReload) {
+          const reload = pendingFerianteFixReload;
+          pendingFerianteFixReload = null;
+          lockModal('Actualizando mapa...');
+          try { await reload; } catch(err) {}
+          unlockModal();
+        }
       }, 260);
     } else {
       modalEl.style.transform = '';
