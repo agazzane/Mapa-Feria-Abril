@@ -2352,7 +2352,7 @@ function showSuccessOverlay(title, subtitle, mapLoadPromise = Promise.resolve(),
     if (effect === 'fireworks') {
       playFireworksSound();
       fireworksEffect();
-      if (navigator.vibrate) navigator.vibrate([100, 150, 60, 150, 100]);
+      if (navigator.vibrate) navigator.vibrate([100, 150, 60, 150, 100, 150, 60, 150, 100]);
     } else {
       playSuccessSound();
     }
@@ -2420,6 +2420,7 @@ function showToast(msg, type = 'ok', duration = 2500) {
   el.className = `toast ${type}`;
   el.textContent = msg;
   container.appendChild(el);
+  if (navigator.vibrate) navigator.vibrate(100);
   if (type === 'ok') playToastSound();
   _toastTimer = setTimeout(() => {
     el.classList.add('out');
