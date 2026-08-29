@@ -579,7 +579,7 @@
   .ingreso-btn { width: 100%; padding: 10px; background: #1a7f3c; color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; font-family: var(--font); cursor: pointer; transition: background .18s; }
   .ingreso-btn:active { background: #146830; }
   .ingreso-btn:disabled { background: #a7d8b7; color: #0a3d1f; cursor: not-allowed; }
-  .contrato-btn { width: 100%; padding: 10px; background: #007aff; color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; font-family: var(--font); cursor: pointer; transition: background .18s; margin-top: 10px; }
+  .contrato-btn { width: 100%; padding: 10px; background: #007aff; color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; font-family: var(--font); cursor: pointer; transition: background .18s; }
   .contrato-btn:active { background: #0062cc; }
   .contrato-btn:disabled { background: #a9d0ff; color: #0a2e5c; cursor: not-allowed; }
   .ingreso-info { font-size: 13px; font-weight: 600; text-align: center; }
@@ -736,7 +736,8 @@
   .pago-btn { width: 100%; padding: 10px; background: #f59e0b; color: white; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; font-family: var(--font); cursor: pointer; transition: background .18s; }
   .pago-btn:active { background: #d97706; }
   .pago-btn:disabled { background: #fcd34d; cursor: not-allowed; color: #92400e; }
-  .pago-msg { font-size: 12px; font-weight: 600; text-align: center; min-height: 16px; }
+  .pago-msg { font-size: 12px; font-weight: 600; text-align: center; }
+  .pago-msg:not(:empty) { margin-top: 2px; min-height: 16px; }
   .pago-msg.ok  { color: #15803d; }
   .pago-msg.err { color: #ff3b30; }
 
@@ -1229,9 +1230,9 @@
 
     <!-- INGRESO (solo Admin, cuando pago 100% + contrato firmado + no ingresó) -->
     <div class="ingreso-section" id="ingresoSection" style="display:none">
-      <div class="ingreso-info" id="ingresoInfo"></div>
       <button class="contrato-btn" id="contratoBtn" onclick="confirmarContrato()" style="display:none">✍️ Confirmar firma de contrato</button>
       <button class="ingreso-btn" id="ingresoBtn" onclick="darIngreso()" style="display:none">🚪 Dar ingreso</button>
+      <div class="ingreso-info" id="ingresoInfo"></div>
       <div class="ingreso-msg" id="ingresoMsg"></div>
     </div>
 
@@ -1882,6 +1883,7 @@ function renderIngresoSection(estado, extra) {
 
     if (yaIngreso) {
       ingresoBtn.style.display = 'none';
+      ingresoInfo.style.marginTop = '0';
       ingresoInfo.textContent = '✅ Ya ingresó'
         + (extra.ingresoUser  ? ` — registrado por ${extra.ingresoUser}` : '')
         + (extra.ingresoFecha ? ` (${extra.ingresoFecha})` : '');
@@ -1890,6 +1892,7 @@ function renderIngresoSection(estado, extra) {
       ingresoBtn.style.display = 'block';
       ingresoBtn.disabled = false;
       ingresoBtn.textContent = '🚪 Dar ingreso';
+      ingresoInfo.style.marginTop = '0';
       ingresoInfo.textContent = '';
       ingresoInfo.className = 'ingreso-info';
     } else if (!contratoOk && (pagadoOk || senadoOk)) {
@@ -1899,16 +1902,25 @@ function renderIngresoSection(estado, extra) {
       contratoBtn.style.display = 'block';
       contratoBtn.disabled = false;
       contratoBtn.textContent = '✍️ Confirmar firma de contrato';
+      // Hay un botón arriba del texto: le damos margen para separarlo.
+      ingresoInfo.style.marginTop = '10px';
       ingresoInfo.textContent = pagadoOk
         ? '⏳ Falta el contrato firmado para poder dar el ingreso.'
         : '⏳ Para dar ingreso deberá abonar el saldo pendiente';
       ingresoInfo.className = 'ingreso-info pending';
     } else {
+      // Contrato ya firmado pero falta abonar el saldo (sin botón visible arriba):
+      // el texto queda solo, sin margen extra, para que quede centrado en la caja.
       ingresoBtn.style.display = 'none';
-      const faltantes = [];
-      if (!pagadoOk)   faltantes.push('el pago del 100%');
-      if (!contratoOk) faltantes.push('el contrato firmado');
-      ingresoInfo.textContent = `⏳ Falta ${faltantes.join(' y ')} para poder dar el ingreso.`;
+      ingresoInfo.style.marginTop = '0';
+      if (contratoOk && !pagadoOk) {
+        ingresoInfo.textContent = '⏳ Para dar ingreso deberá abonar el saldo pendiente';
+      } else {
+        const faltantes = [];
+        if (!pagadoOk)   faltantes.push('el pago del 100%');
+        if (!contratoOk) faltantes.push('el contrato firmado');
+        ingresoInfo.textContent = `⏳ Falta ${faltantes.join(' y ')} para poder dar el ingreso.`;
+      }
       ingresoInfo.className = 'ingreso-info pending';
     }
   } else {
@@ -3940,7 +3952,11 @@ async function darIngreso() {
       msgEl.textContent = '';
       msgEl.className = 'ingreso-msg';
       renderMapUI();
-      await showSuccessOverlay('Ingreso registrado', `Puesto ${currentStandId}`);
+      const nombreFeriante = exIng.n || '';
+      const subtitleIngreso = nombreFeriante
+        ? `${nombreFeriante} - Puesto ${currentStandId}`
+        : `Puesto ${currentStandId}`;
+      await showSuccessOverlay('Ingreso registrado', subtitleIngreso);
       document.getElementById('modalOverlay').classList.remove('open');
 
     } else if (data.yaIngreso) {
