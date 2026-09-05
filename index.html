@@ -92,6 +92,38 @@
     -webkit-tap-highlight-color: transparent;
   }
   .login-user-pill:hover { background: rgba(255,255,255,.2); }
+
+  /* ── BOTÓN DE REFRESCO MANUAL (header) ──
+     Ghost circle con borde sutil (opción 1 del mockup): se distingue del
+     header oscuro por el contorno en vez de por un fondo sólido, así no
+     compite visualmente con el pill de usuario. El ícono gira mientras
+     load() está en curso, y el botón se deshabilita para evitar doble-tap
+     disparando dos fetch. */
+  .header-refresh-btn {
+    flex-shrink: 0;
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,.3);
+    color: #ffffff;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .header-refresh-btn:hover   { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.45); }
+  .header-refresh-btn:active { transform: scale(.92); }
+  .header-refresh-btn:disabled { opacity: .55; cursor: default; }
+  .header-refresh-btn .refresh-icon { display: inline-block; }
+  .header-refresh-btn.spinning .refresh-icon {
+    animation: refreshSpin .7s linear infinite;
+  }
+  @keyframes refreshSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
   .user-pill-avatar {
     width: 24px; height: 24px; border-radius: 50%;
     background: var(--accent); color: #fff;
@@ -838,6 +870,13 @@
       <span class="header-mes-badge" id="headerMesBadge" style="display:none"></span>
       <p id="subtitle">Sincronizando datos...</p>
     </div>
+    <button class="header-refresh-btn" id="refreshBtn" onclick="refrescarManual()" title="Actualizar mapa">
+      <svg class="refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+    </button>
     <button class="login-user-pill" id="userPill" onclick="cerrarSesion()" style="display:none">
       <span class="user-pill-avatar" id="userPillAvatar">?</span>
       <span id="userPillName"></span>
@@ -1443,6 +1482,23 @@ async function load(silencioso = false) {
   } catch(e) {
     if (!modalLocked && !silencioso) hideLoading();
     if (!silencioso) document.getElementById('subtitle').textContent = 'Error al cargar datos';
+  }
+}
+
+// ── REFRESCO MANUAL (botón del header) ──────────────────────────────────────
+// Reusa el load() normal (con su overlay "Cargando mapa..." de siempre) — acá
+// solo agregamos el ícono girando como feedback inmediato al toque, y evitamos
+// que un doble-tap dispare dos fetch superpuestos.
+async function refrescarManual() {
+  const btn = document.getElementById('refreshBtn');
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  btn.classList.add('spinning');
+  try {
+    await load();
+  } finally {
+    btn.classList.remove('spinning');
+    btn.disabled = false;
   }
 }
 
