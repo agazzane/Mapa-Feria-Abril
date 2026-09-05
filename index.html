@@ -1339,7 +1339,7 @@ let lastTap = 0;
 document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTap<300) e.preventDefault(); lastTap=now; }, {passive:false});
 
 // ── VERSIÓN DE LA APP ────────────────────────────────────────────────────────
-const APP_VERSION = 'v3.5';   // ← cambiá solo acá
+const APP_VERSION = 'v3.6';   // ← cambiá solo acá
 document.addEventListener('DOMContentLoaded', () => {
   const lv = document.getElementById('loginVersion');
   const hv = document.getElementById('headerVersion');
@@ -3720,6 +3720,11 @@ async function venderMobAdicional() {
         const qty = mobAdicionalQty[m.key] || 0;
         if (qty > 0) exMob[m.key] = (Number(exMob[m.key]) || 0) + qty;
       });
+      // El monto de esta venta de mobiliario se suma al total del stand
+      // (mismo campo "p" que pinta el modal como "Total"). Sin este paso,
+      // el patch local dejaba el mobiliario actualizado pero el monto
+      // abonado desactualizado hasta el próximo load().
+      exMob.p = (Number(exMob.p) || 0) + total;
 
       msgEl.textContent = '';
       msgEl.className = 'mob-adicional-msg';
